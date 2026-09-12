@@ -53,7 +53,7 @@ export function Upload({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   return (
-    <div className="upload-wrap">
+    <div className="upload-wrap" data-upload-busy={busy || undefined} aria-busy={busy}>
       <label className={`upload ${value ? "has-photo" : ""}`}>
         {value ? (
           <img src={value} alt="Selected photo preview" />
@@ -95,6 +95,7 @@ export function Upload({
         <button
           type="button"
           className="text-button small"
+          disabled={busy}
           onClick={() => onChange("")}
         >
           Remove photo

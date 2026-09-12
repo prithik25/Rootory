@@ -30,6 +30,8 @@ import {
 } from "@/lib/data";
 const text = (f: FormData, k: string) => String(f.get(k) || "").trim();
 function normalizeForm(form: HTMLFormElement) {
+  // Do not save an earlier photo while its replacement is still decoding.
+  if (form.querySelector('[data-upload-busy="true"]')) return false;
   for (const el of Array.from(form.elements)) {
     if (
       (el instanceof HTMLInputElement &&
@@ -750,6 +752,7 @@ export function PlantCheck({
             className="form"
             onSubmit={(e) => {
               e.preventDefault();
+              if (!normalizeForm(e.currentTarget)) return;
               onSave(
                 selected,
                 `Symptoms: ${note.trim()}\nStarted: ${since}. Affected: ${spread}.\nPhotos saved as an observation. No AI assessment performed.`,

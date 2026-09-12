@@ -26,7 +26,12 @@ export async function imageFromFile(file: File): Promise<string> {
     throw new Error("Choose a JPG, PNG, or WebP image.");
   if (file.size > 8 * 1024 * 1024)
     throw new Error("Choose an image smaller than 8 MB.");
-  const bitmap = await createImageBitmap(file);
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error("This photo could not be opened. Choose a different JPG, PNG, or WebP image.");
+  }
   if (bitmap.width * bitmap.height > 40000000) {
     bitmap.close();
     throw new Error("This image is too large. Choose a smaller photo.");
