@@ -146,6 +146,11 @@ export default function Rootory({owner = ""}: {owner?: string}) {
     (async () => {
       try {
         let stored = await readState(scope);
+        if (!owner && stored && (stored.notices.length < 5 || (stored as any).demoVersion !== 2)) {
+          const fresh = seed();
+          stored = { ...fresh, demoVersion: 2 } as any;
+          await saveState(stored as State, scope);
+        }
         if (owner) {
           const info = await cloudInfo();
           const remote = info ? await restoreGarden() : null;

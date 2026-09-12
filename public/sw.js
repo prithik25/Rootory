@@ -1,5 +1,5 @@
 /* Device-local frontend only. Never cache API calls or cross-origin data. */
-const CACHE = "rootory-shell-v2";
+const CACHE = "rootory-shell-v3";
 const CORE = [
   "/",
   "/icon.svg",
