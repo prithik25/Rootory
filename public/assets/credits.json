@@ -1,0 +1,67 @@
+[
+  {
+    "name": "tomato",
+    "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/6/61/Ripe_tomato_on_tomato_plant_in_home_garden.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ripe_tomato_on_tomato_plant_in_home_garden.jpg",
+    "credit": "Clintacc / Wikimedia Commons",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "dimensions": [
+      1832,
+      4080
+    ],
+    "verification": "Source license and direct image URL verified via web tools; image fetched by web tool."
+  },
+  {
+    "name": "basil",
+    "imageUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/50/Basil_plant_Meadowbrook_Park.jpg/1280px-Basil_plant_Meadowbrook_Park.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Basil_plant_Meadowbrook_Park.jpg",
+    "credit": "TheTechnician27 / Wikimedia Commons",
+    "license": "CC0 1.0 (Licensing section)",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "dimensions": [
+      1280,
+      960
+    ],
+    "verification": "Source license and thumbnail URL verified via web tools; thumbnail fetched by web tool."
+  },
+  {
+    "name": "young-basil-alternative",
+    "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/9/93/Young_basil_plant.JPG",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Young_basil_plant.JPG",
+    "credit": "Pixelmaniac pictures / Wikimedia Commons",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "dimensions": [
+      5184,
+      3456
+    ],
+    "verification": "Source license and original-file link verified; binary fetch timed out."
+  },
+  {
+    "name": "leafy-lettuce",
+    "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Lettuce_in_pot_with_dew.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Lettuce_in_pot_with_dew.jpg",
+    "credit": "999real / Wikimedia Commons",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "dimensions": [
+      3024,
+      4032
+    ],
+    "verification": "Source license and original-file link verified; binary fetch cache miss."
+  },
+  {
+    "name": "produce-basket",
+    "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/0/09/Fruit_and_vegetables_basket.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fruit_and_vegetables_basket.jpg",
+    "credit": "National Cancer Institute / Wikimedia Commons; photographer unknown",
+    "license": "Public domain (US National Institutes of Health government work)",
+    "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+    "dimensions": [
+      2700,
+      1800
+    ],
+    "verification": "Source license and direct image URL verified via web tools; image fetched by web tool."
+  }
+]
