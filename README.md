@@ -8,9 +8,9 @@ Rootory is a mobile-friendly growing workspace for farmers and home gardeners, b
 
 Supabase password/email authentication and password recovery, private account plant records with automatic revision-checked saving, private photo storage, a server-side Gemini assessment endpoint, and live Open-Meteo weather are implemented. Signed-out visitors retain a local demo. Account caches are separated by user ID; failed syncs retain local edits.
 
-**Community, marketplace, regional alerts and subscriptions remain local demonstrations.** No payments, seller delivery, public moderation or nearby-alert delivery is connected. This is not a finished production service.
+**Marketplace, regional alerts and subscriptions remain local demonstrations.** Signed-in community posts, comments, likes and bookmarks now use shared Supabase tables. Community photos are public only when explicitly shared. No payments, seller delivery, public moderation or nearby-alert delivery is connected. This is not a finished production service.
 
-Apply both SQL migrations in order and configure `.env.local` using `.env.example`. See `docs/BACKEND-SETUP.md`. The second migration adds `profiles`, `plants`, `plant_updates`, `reminders`, `health_observations` and an authenticated hourly AI request counter. The revision-checked garden transaction materializes these relational rows atomically; record fields are stored as JSON per row in this hackathon implementation.
+Apply all three SQL migrations in order and configure `.env.local` using `.env.example`. See `docs/BACKEND-SETUP.md`. The second migration adds `profiles`, `plants`, `plant_updates`, `reminders`, `health_observations` and an authenticated hourly AI request counter. The revision-checked garden transaction materializes these relational rows atomically; record fields are stored as JSON per row in this hackathon implementation.
 
 ### Working interactions
 

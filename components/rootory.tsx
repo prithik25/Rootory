@@ -61,6 +61,7 @@ import {
 } from "@/lib/data";
 import { LiveWeather } from "./live-weather";
 import { cloudInfo, backupGarden, restoreGarden } from "@/lib/cloud";
+import { loadCommunity, syncCommunity } from "@/lib/community";
 import { privateGarden } from "@/lib/cloud-schema";
 import { CloudAccount } from "./cloud-account";
 import { readState, saveState, readPendingRevision } from "@/lib/storage";
@@ -96,6 +97,7 @@ const titles: Record<View, string> = {
 };
 export default function Rootory({owner = ""}: {owner?: string}) {
   const cloudRevision = useRef(0);
+  const communityBaseline = useRef<Post[]>([]);
   const cloudQueue = useRef(Promise.resolve());
   const scope = owner ? `account:${owner}` : "state";
   const [data, setData] = useState<State | null>(null);
@@ -141,17 +143,20 @@ export default function Rootory({owner = ""}: {owner?: string}) {
         if (owner) {
           const info = await cloudInfo();
           const pending = await readPendingRevision(scope);
+          const sharedPosts = await loadCommunity(owner);
+          communityBaseline.current = sharedPosts;
           if (stored && pending !== undefined) {
+            if ((stored as State & { communityVersion?: number }).communityVersion !== 1) stored = { ...stored, posts: sharedPosts };
             cloudRevision.current = pending;
             // Preserve unsynced local edits across reloads. The server rejects a stale revision.
           } else if (info) {
             const remote = await restoreGarden();
             const base = seed();
-            stored = { ...base, ...remote.garden };
+            stored = { ...base, ...remote.garden, posts: sharedPosts };
             cloudRevision.current = remote.revision;
           } else {
             const base = seed();
-            stored = { ...base, plants: [], entries: [], tasks: [], notices: [], profile: { ...base.profile, name: "Grower", location: "", bio: "" } };
+            stored = { ...base, posts: sharedPosts, plants: [], entries: [], tasks: [], notices: [], profile: { ...base.profile, name: "Grower", location: "", bio: "" } };
           }
         }
         if (!cancelled) { setData(stored || seed()); setLoaded(true); }
@@ -207,6 +212,9 @@ export default function Rootory({owner = ""}: {owner?: string}) {
         await saveState(snapshot, scope, owner ? cloudRevision.current : undefined);
         if (owner) {
           cloudRevision.current = await backupGarden(privateGarden(snapshot), cloudRevision.current);
+          await saveState(snapshot, scope, cloudRevision.current);
+          await syncCommunity(communityBaseline.current, snapshot.posts, owner);
+          communityBaseline.current = snapshot.posts;
           await saveState(snapshot, scope, null);
         }
       };
@@ -429,7 +437,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
           <strong>{p.own ? data.profile.name : p.author}</strong>
           <small>
             {p.location} · {dateLabel(p.date)}
-            {!p.own ? " · Sample grower" : ""}
+            {!p.own ? (owner ? " · Community grower" : " · Sample grower") : ""}
           </small>
         </div>
         <button
@@ -537,7 +545,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
     <div className="inline-note">
       <Info size={16} />
       <span>
-        {owner ? "Account plant records sync privately. Community, marketplace and regional alerts remain demonstrations." : "Demo workspace · Plant records stay on this device until you sign into an account. Community and marketplace are demonstrations."}
+        {owner ? "Plant records sync privately. Community posts are shared with signed-in growers. Marketplace and regional alerts remain demonstrations." : "Demo workspace · Plant records stay on this device until you sign into an account. Community and marketplace are demonstrations."}
       </span>
     </div>
   );
@@ -1226,9 +1234,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
                   <div className="inline-note">
                     <Info size={18} />
                     <span>
-                      Community posts are shared experiences, not verified
-                      agronomic advice. Sample posts and your demo posts remain
-                      on this device.
+                      {owner ? "Posts and photos you share are visible to other signed-in growers. Community experiences are not verified agronomic advice." : "This is a local community demo. Posts remain on this device."}
                     </span>
                   </div>
                 </aside>
@@ -1878,7 +1884,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
       {modal && (
         <Modal
           title={modalTitle(modal.type)}
-          description={modalDescription(modal.type)}
+          description={modalDescription(modal.type, Boolean(owner))}
           onClose={() => setModal(null)}
           wide={["listing-detail", "weather", "credits"].includes(modal.type)}
         >
@@ -1929,7 +1935,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
               onSave={(p) => {
                 update((s) => ({ ...s, posts: [p, ...s.posts] }));
                 setModal(null);
-                notify("Your story was added to the demo community.");
+                notify(owner ? "Your story is being shared with the community." : "Your story was added to the demo community.");
               }}
             />
           )}
@@ -1946,7 +1952,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
                   onSave={(post) => {
                     update((s) => ({ ...s, posts: [post, ...s.posts] }));
                     setModal(null);
-                    notify("Progress shared in the local demo community.");
+                    notify(owner ? "Progress is being shared with the community." : "Progress shared in the local demo community.");
                   }}
                 />
               );
@@ -2416,11 +2422,11 @@ function modalTitle(type: string) {
     )[type] || "Rootory"
   );
 }
-function modalDescription(type: string) {
+function modalDescription(type: string, account = false) {
   return ["plant", "log", "reminder"].includes(type)
-    ? "Private to this device. You choose what to share."
+    ? (account ? "Private to your account. You choose what to share." : "Private to this device. You choose what to share.")
     : ["post", "share-entry", "comments", "flag-post"].includes(type)
-      ? "This is a local community demo. Nothing is published online."
+      ? (account && type !== "flag-post" ? "Posts, comments and shared photos are visible to other signed-in growers." : "This is a local demo. Nothing is published online.")
       : ["listing", "listing-detail", "enquiry"].includes(type)
         ? "Demo marketplace. No payments or messages are sent."
         : type === "report"

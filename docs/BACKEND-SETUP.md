@@ -36,3 +36,9 @@ Weather: `/api/weather` validates and rounds coordinates, requests Open-Meteo, a
 Verified: production build, 12 unit tests, live weather request and browser rendering, invalid-coordinate rejection, unauthenticated AI rejection, model/key availability, and anonymous denials for new tables. Full authenticated CRUD and AI endpoint tests remain pending a signed-in test account. Neither passwords nor secret keys are in source control.
 
 Live provider smoke test: Gemini 2.5 Flash returned a model-retirement error for this project. The default was updated to `gemini-3.6-flash`; a sample basil photo returned a schema-valid assessment. This tests provider generation separately from the authenticated application endpoint. GitHub and Vercel publication were deferred at the user's request.
+
+## Shared community (migration 003)
+
+Migration 003 adds posts/comments/likes/bookmarks and the community-images bucket. Signed-in posts load from Supabase; mutations persist via the existing serialized queue. Owner RLS prevents editing other accounts' rows, bookmarks are private, display names come from account profiles. Shared images are public and the form explicitly explains sharing. Signed-out community stays a device-local demo. Feed is capped at 100 posts / 2,000 comments / 10,000 likes; pagination and moderation remain unfinished.
+
+Verified live: judge account seeded with 3 private plants / 4 updates / 3 reminders; relational queries confirmed them. Added 3 clearly labelled shared posts, a comment, like and bookmark. Spoofed-owner insert denied with 42501. Authenticated /api/plant-health returned HTTP 200 and structured data. Browser restored populated cloud garden and confirmed a shared like survives reload. A stale empty local cache produced a revision conflict as intended; explicit restore resolved it. Distinct second-account testing and private-photo lifecycle coverage still remain.
