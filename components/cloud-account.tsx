@@ -29,7 +29,11 @@ export function CloudAccount({state,onRestore}:{state:State;onRestore:(garden:Ga
       <p className="body-copy muted">Back up your plant records, reminders, profile and photos privately. Community posts and marketplace activity stay in the local demo. Backups are manual.</p>
       {!account?<form className="form" onSubmit={e=>{e.preventDefault();void run(async()=>{
         if(sent){const {error}=await supabase().auth.verifyOtp({email:email.trim(),token:code.trim(),type:"email"});if(error)throw new Error("Code could not be verified. Check it or request another.");setSent(false);setCode("");setMessage("Signed in. Check your existing backup before saving.");}
-        else{const {error}=await supabase().auth.signInWithOtp({email:email.trim()});if(error)throw new Error("Could not send a code. Check your email and authentication setup, then try again.");setSent(true);setMessage("Check your email for the sign-in code.");}
+        else{const {error}=await supabase().auth.signInWithOtp({email:email.trim()});if(error){
+          if(error.code === "over_email_send_rate_limit" || error.status === 429) throw new Error("Email sending limit reached. Wait before trying again, or configure a custom SMTP provider in Supabase.");
+          if(error.code === "email_address_not_authorized") throw new Error("Supabase’s default email service only sends to authorized project-team addresses. Use your Supabase account email for this test, or configure custom SMTP.");
+          throw new Error(`Email could not be sent: ${error.message} (${error.code || error.status || "unknown"}).`);
+        }setSent(true);setMessage("Check your email for the sign-in code.");}
       });}}>
         <Field label="Account email"><input type="email" autoComplete="email" required maxLength={254} value={email} disabled={sent||busy} onChange={e=>setEmail(e.target.value)}/></Field>
         {sent&&<Field label="Email code"><input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6,10}" required value={code} onChange={e=>setCode(e.target.value)}/></Field>}
