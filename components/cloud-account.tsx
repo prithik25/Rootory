@@ -20,11 +20,12 @@ export function CloudAccount({state,onRestore,automatic=false}:{automatic?:boole
   const [message,setMessage]=useState("");
   const [revision,setRevision]=useState<number|null>(null);
   const [confirmRestore,setConfirmRestore]=useState(false);
+  const [confirmDelete,setConfirmDelete]=useState(false);
   useEffect(()=>{
     if(!cloudConfigured)return;
     const client=supabase();
     const {data:{subscription}}=client.auth.onAuthStateChange((_event,session)=>{
-      setAccount(session?.user.email || "");setRevision(null);setConfirmRestore(false);
+      setAccount(session?.user.email || "");setRevision(null);setConfirmRestore(false);setConfirmDelete(false);
     });
     return ()=>subscription.unsubscribe();
   },[]);
@@ -59,6 +60,7 @@ export function CloudAccount({state,onRestore,automatic=false}:{automatic?:boole
         <button className="button secondary" disabled={busy} onClick={()=>setConfirmRestore(true)}>Restore cloud garden</button>
         {confirmRestore&&<div><p>Replace this device’s plants, timeline, reminders and profile with your cloud backup? Export local records first if you want to keep them.</p><button className="button secondary" disabled={busy} onClick={()=>void run(async()=>{const result=await restoreGarden();onRestore(result.garden,result.revision);setRevision(result.revision);setConfirmRestore(false);setMessage("Cloud garden restored on this device.");})}>Replace local garden</button><button className="text-button" disabled={busy} onClick={()=>setConfirmRestore(false)}>Cancel</button></div>}
         <button className="text-button" disabled={busy} onClick={()=>void run(async()=>{const {error}=await supabase().auth.signOut({scope:"local"});if(error)throw error;setMessage("Signed out. Local records remain on this device; use Reset demo workspace to clear them.");})}>Sign out</button>
+        {confirmDelete?<div><p>Permanently delete your account, cloud garden, posts, listings and photos from Rootory servers? This cannot be undone.</p><button className="button secondary danger" disabled={busy} onClick={()=>void run(async()=>{const {error}=await supabase().rpc("delete_own_account");if(error)throw error;await supabase().auth.signOut({scope:"local"});setMessage("Your account and all cloud data have been permanently deleted.");})}>Permanently delete account</button><button type="button" className="text-button" disabled={busy} onClick={()=>setConfirmDelete(false)}>Cancel</button></div>:<button type="button" className="text-button danger margin-top" disabled={busy} onClick={()=>setConfirmDelete(true)}>Delete account and cloud data</button>}
       </div>}
       {message&&<p role="status" className="body-copy">{message}</p>}
     </>}
