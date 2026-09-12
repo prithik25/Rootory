@@ -507,7 +507,7 @@ export function ListingForm({
         pesticide sales or payments.
       </p>
       <button className="button primary full-width">
-        {listing ? "Save changes" : "Create demo listing"}
+        {listing ? "Save changes" : "Create listing"}
       </button>
     </form>
   );
@@ -515,8 +515,10 @@ export function ListingForm({
 export function EnquiryForm({
   listing,
   onSave,
+  live = false,
 }: {
   listing: Listing;
+  live?: boolean;
   onSave: (e: Enquiry) => void;
 }) {
   return (
@@ -556,8 +558,7 @@ export function EnquiryForm({
       <div className="inline-note">
         <Info size={17} />
         <span>
-          This saves an enquiry in your demo history. No message is sent to the
-          sample seller.
+          {live ? "This message will be sent to the listing’s seller. Keep personal payment details out of your enquiry." : "This saves a local demo enquiry. No message is sent."}
         </span>
       </div>
       <button className="button primary full-width">

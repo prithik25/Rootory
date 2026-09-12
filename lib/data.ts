@@ -84,6 +84,8 @@ export type Report = {
   status: "Pending" | "Reviewed" | "Dismissed";
 };
 export type Enquiry = {
+  direction?: "sent" | "received";
+  senderName?: string;
   id: string;
   listingId: string;
   listingTitle: string;

@@ -18,7 +18,7 @@ export function saveState(state: State, scope = "state", pendingRevision?: numbe
     .then(async () => {
       const db = await database();
       const tx = db.transaction("workspace", "readwrite");
-      await tx.store.put(pendingRevision !== undefined ? { ...state, communityVersion: 1 } : state, scope);
+      await tx.store.put(pendingRevision !== undefined ? { ...state, communityVersion: 1, marketplaceVersion: 1 } : state, scope);
       if (pendingRevision !== undefined) await tx.store.put(pendingRevision, `${scope}:pending`);
       await tx.done;
     });

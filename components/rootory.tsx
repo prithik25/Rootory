@@ -59,8 +59,10 @@ import {
   pictures,
   filterListings,
 } from "@/lib/data";
+import { CropSafety } from "./crop-safety";
 import { LiveWeather } from "./live-weather";
 import { cloudInfo, backupGarden, restoreGarden } from "@/lib/cloud";
+import { loadMarketplace, syncMarketplace } from "@/lib/marketplace";
 import { loadCommunity, syncCommunity } from "@/lib/community";
 import { privateGarden } from "@/lib/cloud-schema";
 import { CloudAccount } from "./cloud-account";
@@ -97,7 +99,9 @@ const titles: Record<View, string> = {
 };
 export default function Rootory({owner = ""}: {owner?: string}) {
   const cloudRevision = useRef(0);
+  const privateBaseline = useRef("");
   const communityBaseline = useRef<Post[]>([]);
+  const marketplaceBaseline = useRef<{listings: Listing[]; enquiries: State["enquiries"]}>({listings:[],enquiries:[]});
   const cloudQueue = useRef(Promise.resolve());
   const scope = owner ? `account:${owner}` : "state";
   const [data, setData] = useState<State | null>(null);
@@ -142,21 +146,26 @@ export default function Rootory({owner = ""}: {owner?: string}) {
         let stored = await readState(scope);
         if (owner) {
           const info = await cloudInfo();
+          const remote = info ? await restoreGarden() : null;
           const pending = await readPendingRevision(scope);
           const sharedPosts = await loadCommunity(owner);
           communityBaseline.current = sharedPosts;
+          const market = await loadMarketplace(owner);
+          marketplaceBaseline.current = market;
           if (stored && pending !== undefined) {
-            if ((stored as State & { communityVersion?: number }).communityVersion !== 1) stored = { ...stored, posts: sharedPosts };
-            cloudRevision.current = pending;
+            if ((stored as State & { communityVersion?: number }).communityVersion !== 1) stored = { ...stored, posts: sharedPosts, ...market };
+            if ((stored as State & { marketplaceVersion?: number }).marketplaceVersion !== 1) stored = { ...stored, ...market };
+            privateBaseline.current = remote ? JSON.stringify(remote.garden) : "";
+            cloudRevision.current = privateBaseline.current === JSON.stringify(privateGarden(stored)) ? (info?.revision || 0) : pending;
             // Preserve unsynced local edits across reloads. The server rejects a stale revision.
-          } else if (info) {
-            const remote = await restoreGarden();
+          } else if (remote) {
             const base = seed();
-            stored = { ...base, ...remote.garden, posts: sharedPosts };
+            stored = { ...base, ...remote.garden, posts: sharedPosts, ...market };
             cloudRevision.current = remote.revision;
+            privateBaseline.current = JSON.stringify(remote.garden);
           } else {
             const base = seed();
-            stored = { ...base, posts: sharedPosts, plants: [], entries: [], tasks: [], notices: [], profile: { ...base.profile, name: "Grower", location: "", bio: "" } };
+            stored = { ...base, posts: sharedPosts, ...market, plants: [], entries: [], tasks: [], notices: [], profile: { ...base.profile, name: "Grower", location: "", bio: "" } };
           }
         }
         if (!cancelled) { setData(stored || seed()); setLoaded(true); }
@@ -211,10 +220,17 @@ export default function Rootory({owner = ""}: {owner?: string}) {
       const persist = async () => {
         await saveState(snapshot, scope, owner ? cloudRevision.current : undefined);
         if (owner) {
-          cloudRevision.current = await backupGarden(privateGarden(snapshot), cloudRevision.current);
+          const privateDocument = privateGarden(snapshot);
+          const fingerprint = JSON.stringify(privateDocument);
+          if (privateBaseline.current !== fingerprint) {
+            cloudRevision.current = await backupGarden(privateDocument, cloudRevision.current);
+            privateBaseline.current = fingerprint;
+          }
           await saveState(snapshot, scope, cloudRevision.current);
           await syncCommunity(communityBaseline.current, snapshot.posts, owner);
           communityBaseline.current = snapshot.posts;
+          await syncMarketplace(marketplaceBaseline.current, snapshot, owner);
+          marketplaceBaseline.current = { listings:snapshot.listings,enquiries:snapshot.enquiries };
           await saveState(snapshot, scope, null);
         }
       };
@@ -545,7 +561,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
     <div className="inline-note">
       <Info size={16} />
       <span>
-        {owner ? "Plant records sync privately. Community posts are shared with signed-in growers. Marketplace and regional alerts remain demonstrations." : "Demo workspace · Plant records stay on this device until you sign into an account. Community and marketplace are demonstrations."}
+        {owner ? "Plant records sync privately. Community posts are shared with signed-in growers. Marketplace listings are shared. Regional alerts remain demonstrations." : "Demo workspace · Plant records stay on this device until you sign into an account. Community and marketplace are demonstrations."}
       </span>
     </div>
   );
@@ -1328,8 +1344,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
                           <strong>{e.listingTitle}</strong>
                           <p>{e.body}</p>
                           <small>
-                            {dateLabel(e.date)} · Saved locally · Not sent to a
-                            seller
+                            {dateLabel(e.date)} · {owner ? (e.direction === "received" ? `Received from ${e.senderName || "Grower"}` : "Sent to seller") : "Saved locally · Not sent"}
                           </small>
                         </div>
                       </article>
@@ -1337,7 +1352,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
                   ) : (
                     <Empty
                       title="Your conversations start here"
-                      body="Open a listing and save an enquiry to try the flow. Demo enquiries are not sent."
+                      body={owner ? "Enquiries you send and receive appear here. Open a listing to contact its seller." : "Open a listing to try the local demo."}
                     />
                   )}
                 </section>
@@ -1379,9 +1394,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
               <div className="inline-note">
                 <ShieldCheck size={18} />
                 <span>
-                  Demo marketplace · No payments, deliveries, or seller
-                  verification are connected. Listings and enquiries are saved
-                  on this device.
+                  {owner ? "Listings are shared publicly. Enquiries are delivered privately to the seller. No payments, delivery or seller verification are provided." : "Local marketplace demo. Sign in for shared listings and seller enquiries."}
                 </span>
               </div>
             </>
@@ -1406,6 +1419,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
                   Mark all read
                 </button>,
               )}
+              {owner && <CropSafety owner={owner} plants={data.plants} />}
               <div className="toolbar">
                 <div className="tabs">
                   {[
@@ -1414,7 +1428,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
                     "Care",
                     "Weather",
                     "Community",
-                    "Report review",
+                    ...(owner ? [] : ["Report review"]),
                   ].map((f) => (
                     <button
                       className={tab === f ? "selected" : ""}
@@ -1671,6 +1685,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
                 <aside>
                   <CloudAccount automatic={Boolean(owner)} state={data} onRestore={(garden, revision) => {
                     if (revision !== undefined) cloudRevision.current = revision;
+                    privateBaseline.current = JSON.stringify(garden);
                     setLoaded(true);
                     setData((s) => s ? ({ ...s, ...garden }) : s);
                     setSelectedPlant(null);
@@ -1844,7 +1859,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
             </span>
             <span>
               {!online ? "Offline · " : ""}
-              {saved ? (owner ? "Saved to your account" : "Saved on this device") : "Saving…"}
+              {storageError ? "Sync needs attention" : saved ? (owner ? "Saved to your account" : "Saved on this device") : "Saving…"}
             </span>
           </footer>
         </div>
@@ -1972,7 +1987,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
                 notify(
                   modal.id
                     ? "Listing updated."
-                    : "Listing created in your demo marketplace.",
+                    : (owner ? "Listing is being published." : "Listing created in your demo marketplace."),
                 );
               }}
             />
@@ -2013,8 +2028,8 @@ export default function Rootory({owner = ""}: {owner?: string}) {
                       <Info size={16} />
                       <span>
                         {l.own
-                          ? "Your demo listing"
-                          : "Sample seller · Identity and products not verified"}
+                          ? (owner ? "Your listing" : "Your demo listing")
+                          : "Seller and products not verified"}
                       </span>
                     </div>
                     {l.own ? (
@@ -2056,7 +2071,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
                         onClick={() => setModal({ type: "enquiry", id: l.id })}
                       >
                         <MessageCircle size={17} />
-                        Save an enquiry
+                        {owner ? "Send an enquiry" : "Save an enquiry"}
                       </button>
                     )}
                   </div>
@@ -2065,11 +2080,12 @@ export default function Rootory({owner = ""}: {owner?: string}) {
             })()}
           {modal.type === "enquiry" && (
             <EnquiryForm
+              live={Boolean(owner)}
               listing={data.listings.find((l) => l.id === modal.id)!}
               onSave={(e) => {
                 update((s) => ({ ...s, enquiries: [e, ...s.enquiries] }));
                 setModal(null);
-                notify("Enquiry saved locally. No message was sent.");
+                notify(owner ? "Your enquiry is being sent to the seller." : "Enquiry saved locally. No message was sent.");
               }}
             />
           )}
@@ -2428,7 +2444,7 @@ function modalDescription(type: string, account = false) {
     : ["post", "share-entry", "comments", "flag-post"].includes(type)
       ? (account && type !== "flag-post" ? "Posts, comments and shared photos are visible to other signed-in growers." : "This is a local demo. Nothing is published online.")
       : ["listing", "listing-detail", "enquiry"].includes(type)
-        ? "Demo marketplace. No payments or messages are sent."
+        ? (account ? "Listings are public. Enquiries are visible only to the sender and seller. No payments are processed." : "Demo marketplace. No payments or messages are sent.")
         : type === "report"
           ? "A demo observation, not a confirmed diagnosis."
           : "Your Rootory workspace";

@@ -4,7 +4,7 @@ import type { Post } from "./data";
 const postDataSchema=z.object({author:z.string().max(5000),location:z.string().max(5000),crop:z.string().max(5000),type:z.string().max(100),body:z.string().min(1).max(5000),date:z.string().max(50),image:z.string().max(3000).refine(v=>v===""||/^\/assets\/[a-z-]+\.webp$/.test(v)||v.startsWith(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/community-images/`))});
 const checked=(error:unknown)=>{if(error)throw new Error("Community changes could not sync. Your local changes are retained; check your connection and community database setup.");};
 const uploaded=new Map<string,string>();
-async function publicImage(image:string,owner:string){
+export async function publicImage(image:string,owner:string){
  if(!image.startsWith('data:'))return image;
  const cacheKey=owner+image;if(uploaded.has(cacheKey))return uploaded.get(cacheKey)!;
  const bytes=Uint8Array.from(atob(image.split(',')[1]),c=>c.charCodeAt(0));

@@ -1,0 +1,113 @@
+===============================================================================
+ROOTORY PROJECT - ARCHITECTURE, RECENT CHANGES & HANDOFF DOCUMENTATION
+Generated: September 12, 2026
+For: Antigravity / Next AI Assistant / Pair Programmer
+===============================================================================
+
+1. PROJECT OVERVIEW
+-------------------
+Rootory is a mobile-friendly growing workspace for farmers and home gardeners,
+built for Bit N Build — Track 3: Jan Jeevan.
+Tech Stack:
+- Frontend: Next.js 16.3.5 (Turbopack), React 19, TypeScript, Lucide React, Radix Dialog, Custom CSS Tokens (No Tailwind/shadcn).
+- Local State & PWA: idb (IndexedDB), Service Worker, offline-first app shell.
+- Backend & DB: Supabase (PostgreSQL, Auth, Storage, RLS).
+- AI & External APIs: @google/genai (Gemini 3.6 Flash), Open-Meteo (Live Weather), Sharp (Server-side image re-encoding & EXIF scrubbing).
+
+
+2. ALL BACKEND MIGRATIONS & CURRENT STATE
+-----------------------------------------
+The database has evolved across 5 migrations located in `supabase/migrations/`:
+
+- 001_private_gardens.sql:
+  * Private garden backup table with atomic revision check.
+  * Private bucket for plant images with owner-only access.
+  * Auth configured for 6-digit email codes (via {{ .Token }} in Supabase template).
+
+- 002_account_gardens.sql:
+  * Materializes relational tables: profiles, plants, plant_updates, reminders, health_observations.
+  * 700ms debounced automatic saving with serialized revision queue.
+  * Server-side assessment quota table (`assessment_usage`) and Postgres function `claim_plant_assessment()`.
+  * Note: The AI quota limit is customized for demo/testing:
+    - Default accounts: 10 AI assessments per UTC hour.
+    - Demo Account (`demo@rootory.example`): 500 AI assessments per UTC hour via `claim_plant_assessment()`.
+
+- 003_community.sql:
+  * Public community posts, comments, likes, and bookmarks.
+  * `community-images` public storage bucket.
+  * Logic handled in `lib/community.ts` and synced with local IndexedDB.
+
+- 004_marketplace.sql (Uncommitted / Staged):
+  * `marketplace_listings`: Public read, authenticated owner write/delete. Price validation.
+  * `enquiries`: Participant-only read (sender and seller).
+  * PostgreSQL trigger `route_enquiry()`: Validates listing availability, sets seller_id, ensures sender_id matches auth.uid(), fetches sender profile name.
+  * Sync logic implemented in `lib/marketplace.ts`.
+
+- 005_crop_safety.sql (Uncommitted / Staged):
+  * `grower_locations`: Private latitude/longitude/locality for growers.
+  * `crop_reports`: Growers submit pest/disease observations.
+  * `alerts`: Targeted in-app alerts table.
+  * PostgreSQL function `review_crop_report(report uuid, approve boolean)`:
+    - Restricted to admins (`is_rootory_admin()`).
+    - Reports must be < 7 days old.
+    - Calculates distance: dispatches alerts to growers of the SAME crop within 10 km!
+  * `admin_members` table and `moderate_content()` function for taking down posts/listings.
+
+
+3. KEY FRONTEND & COMPONENT CHANGES
+-----------------------------------
+- `components/rootory.tsx`:
+  * Embeds `<CropSafety owner={owner} plants={data.plants} />` directly on the dashboard when signed in.
+  * Synchronizes marketplace listings and enquiries between IndexedDB and Supabase.
+  * Added live messaging indicators (e.g. "Listing is being published", "Your enquiry is being sent to the seller").
+  * Polished footer sync states ("Sync needs attention" vs "Saved to your account").
+  * Baseline tracking (`privateBaseline`) prevents false revision conflict triggers.
+
+- `components/crop-safety.tsx`:
+  * UI component allowing growers to set private alert coordinates (via browser geolocation or manual entry).
+  * Report submission form with crop selector.
+  * Nearby alert feed with "Mark read" button.
+  * Admin review queue and moderation form (visible when `is_rootory_admin()` returns true).
+
+- `components/workflows.tsx`:
+  * `ListingForm` and `EnquiryForm` updated with `live` flag to distinguish between demo mode (local only) and live seller messaging.
+
+- `lib/data.ts` & `lib/storage.ts`:
+  * Added `direction` ('sent' | 'received') and `senderName` to `Enquiry`.
+  * `storage.ts` now tracks `marketplaceVersion: 1` alongside `communityVersion: 1`.
+
+- `app/api/plant-health/route.ts`:
+  * Rate limited via `claim_plant_assessment()` in Postgres.
+  * Re-encodes uploaded images server-side using `sharp` (strips EXIF metadata, resizes to 1200x1200px max, 80% JPEG).
+  * Model set to `gemini-3.6-flash`.
+  * Returns structured JSON matching `assessmentSchema`.
+
+
+4. VERIFICATION STATUS
+----------------------
+- TypeScript Compilation: `npm run typecheck` passed (0 errors).
+- Unit Tests: `npm test` passed (12/12 Vitest tests passed).
+- Production Build: `npm run build` passed cleanly with Turbopack.
+- Security: `.env.local` is ignored by Git. No secret keys or credentials committed.
+
+
+5. PENDING ACTIONS / NEXT STEPS
+-------------------------------
+1. Supabase Migrations:
+   - Run `202609120004_marketplace.sql` and `202609120005_crop_safety.sql` in Supabase SQL editor.
+   - Run the custom `claim_plant_assessment()` function to grant `demo@rootory.example` 500 requests/hr.
+   - To make an account an admin, insert their user ID into `public.admin_members`.
+2. Git:
+   - Stage and commit the working tree:
+     `git add .`
+     `git commit -m "Add live marketplace sync, crop safety alerts, and admin moderation"`
+3. GitHub Remote:
+   - Local repo currently has no remote (`git remote -v` is empty).
+   - Create repo on GitHub and push:
+     `git remote add origin https://github.com/prithik25/Rootory.git`
+     `git push -u origin main`
+4. Deployment:
+   - Connect GitHub repo to Vercel.
+   - Configure server environment variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `GEMINI_API_KEY`.
+   - Test PWA installability on physical mobile device over HTTPS.
+===============================================================================
