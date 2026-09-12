@@ -59,6 +59,7 @@ import {
   pictures,
   filterListings,
 } from "@/lib/data";
+import { CloudAccount } from "./cloud-account";
 import { readState, saveState } from "@/lib/storage";
 import { Modal, Field, Upload, Empty, Photo } from "./primitives";
 import {
@@ -1666,11 +1667,15 @@ export default function Rootory() {
                   />
                 </section>
                 <aside>
-                  <section className="panel">
+                  <CloudAccount state={data} onRestore={(garden) => {
+                    update((s) => ({ ...s, ...garden }));
+                    setSelectedPlant(null);
+                  }} />
+                  <section className="panel margin-top">
                     <h3>Your data, your choice</h3>
                     <p className="body-copy muted">
-                      This frontend demo stores records in your browser. It has
-                      no shared account or cloud backup yet.
+                      Records save in your browser. Use Your cloud garden above
+                      to back up or restore private plant records when connected.
                     </p>
                     <button
                       className="button secondary full-width"
@@ -1709,7 +1714,7 @@ export default function Rootory() {
                       </p>
                       <p>
                         <Clock3 size={17} />
-                        Shared accounts <span>Next phase</span>
+                        Cloud backup <span>See account panel</span>
                       </p>
                       <p>
                         <Clock3 size={17} />
