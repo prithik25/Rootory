@@ -1,4 +1,5 @@
 "use client";
+import { ObservationNote } from "./observation-note";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   Sprout,
@@ -561,7 +562,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
     <div className="inline-note">
       <Info size={16} />
       <span>
-        {owner ? "Plant records sync privately. Community posts are shared with signed-in growers. Marketplace listings are shared. Regional alerts remain demonstrations." : "Demo workspace · Plant records stay on this device until you sign into an account. Community and marketplace are demonstrations."}
+        {owner ? "Plant records sync privately. Community posts are shared with signed-in growers. Marketplace listings are shared. Submit crop observations in Alerts; nearby notices require administrator review." : "Demo workspace · Plant records stay on this device until you sign into an account. Community and marketplace are demonstrations."}
       </span>
     </div>
   );
@@ -1020,7 +1021,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
                                 {dateLabel(e.date)}
                               </span>
                             </div>
-                            <p>{e.note}</p>
+                            <ObservationNote note={e.note}/>
                             {e.image && (
                               <Photo
                                 src={e.image}

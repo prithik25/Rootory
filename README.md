@@ -53,11 +53,12 @@ The prototype materializes private relational rows from a whole-garden JSON snap
 - Deployed judge password login works.
 - Deployed weather and authenticated AI endpoints returned HTTP 200; AI returned structured uncertainty and usable-image fields.
 - Private photo upload/download matched bytes; public access to the private image was blocked.
+- Deployed browser AI assessment and photograph saved to the timeline and remained visible after reload.
 - Community like persisted after browser reload; owner-spoofed writes were rejected.
 - Marketplace listing availability and enquiry routing were checked against the database.
 - Pending crop reporting works; the ordinary judge account cannot approve reports or act as administrator.
 
-Still unverified: distinct-account isolation across every flow, administrator approval through to another grower's radius alert, password-recovery delivery, full AI-result photo-save UI flow and physical-phone PWA installation. These are not claimed complete.
+Still unverified: distinct-account isolation across every flow, administrator approval through to another grower's radius alert, password-recovery delivery, physical-phone PWA installation. These are not claimed complete.
 
 ## Deployment and submission
 
