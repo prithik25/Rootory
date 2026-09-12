@@ -69,3 +69,7 @@ Remaining submission artifacts: six-slide presentation and three-minute recorded
 ## Image credits
 
 See `public/assets/credits.json` and in-app Photo credits. Sample records and photographs are illustrative, not diagnostic references. Never commit passwords, private keys or `.env.local`.
+
+## Simulated sensor integration
+
+Plant pages include a private moisture-simulation panel, five-second refresh, last ten readings and temporary device credentials. ESP32/Wokwi starter files and recording steps are in `iot/wokwi/README.md`. A browser slider provides a second input to the same API. Run migration 006 for this feature. Values are explicitly simulated and not calibrated soil measurements. No automated irrigation or sensor-informed AI is claimed.

@@ -1,4 +1,5 @@
 "use client";
+import { SensorPanel } from "./sensor-panel";
 import { ObservationNote } from "./observation-note";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
@@ -1061,7 +1062,8 @@ export default function Rootory({owner = ""}: {owner?: string}) {
                   </div>
                 </section>
                 <aside>
-                  <section className="panel">
+                  <SensorPanel key={plant.id} plantId={plant.id} owner={owner}/>
+                  <section className="panel margin-top">
                     <h3>Plant details</h3>
                     <dl className="plant-facts">
                       <div>
