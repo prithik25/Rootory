@@ -1,4 +1,2 @@
-import Rootory from "@/components/rootory";
-export default function Page() {
-  return <Rootory />;
-}
+import Workspace from "@/components/workspace";
+export default function Page() { return <Workspace />; }

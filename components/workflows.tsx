@@ -1,5 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { supabase, cloudConfigured } from "@/lib/supabase";
+import { assessmentSchema, type Assessment } from "@/lib/assessment";
 import {
   Leaf,
   Camera,
@@ -720,6 +722,24 @@ export function PlantCheck({
   const [note, setNote] = useState("");
   const [since, setSince] = useState("Today");
   const [spread, setSpread] = useState("One plant");
+  const [assessment, setAssessment] = useState<Assessment|null>(null);
+  const [assessing, setAssessing] = useState(false);
+  const [assessmentError, setAssessmentError] = useState("");
+  const requestVersion = useRef(0);
+  useEffect(() => { requestVersion.current++; setAssessment(null); setAssessmentError(""); }, [image, selected, note]);
+  async function assess() {
+    const version = requestVersion.current;
+    setAssessing(true);setAssessmentError("");
+    try {
+      if (!cloudConfigured) throw Error("Sign in to use plant assessment.");
+      const {data:{session}}=await supabase().auth.getSession();
+      if(!session)throw Error("Sign in through your profile before requesting an assessment.");
+      const response=await fetch("/api/plant-health",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({image,crop:plants.find(p=>p.id===selected)?.crop||"Plant",note})});
+      const body=await response.json();if(!response.ok)throw Error(body.error);
+      if(requestVersion.current===version)setAssessment(assessmentSchema.parse(body.assessment));
+    }catch(e){if(requestVersion.current===version)setAssessmentError(e instanceof Error?e.message:"Assessment unavailable.");}finally{setAssessing(false);}
+  }
+
   return (
     <div className="check-layout">
       <section className="panel check-main">
@@ -755,7 +775,7 @@ export function PlantCheck({
               if (!normalizeForm(e.currentTarget)) return;
               onSave(
                 selected,
-                `Symptoms: ${note.trim()}\nStarted: ${since}. Affected: ${spread}.\nPhotos saved as an observation. No AI assessment performed.`,
+                `Symptoms: ${note.trim()}\nStarted: ${since}. Affected: ${spread}.\n${assessment ? `AI-assisted observation (not a diagnosis): ${JSON.stringify(assessment)}` : "Photos saved as an observation. No AI assessment performed."}`,
                 image,
                 whole,
               );
@@ -763,7 +783,7 @@ export function PlantCheck({
           >
             <div className="row between">
               <h2>Take a closer look.</h2>
-              <span className="demo-pill">Frontend preview</span>
+              <span className="demo-pill">Plant observation</span>
             </div>
             <p className="muted body-copy">
               Record what you see now, so you can compare what changes later.
@@ -838,13 +858,16 @@ export function PlantCheck({
             <div className="inline-note">
               <Info size={18} />
               <span>
-                AI isn’t connected yet. Photos are kept on this device, and this
-                form saves an observation without diagnosing it.
+                AI can describe visible signs and possible causes, not confirm a diagnosis.
+                Requesting an assessment sends this photo and description to Google Gemini.
               </span>
             </div>
+            <button type="button" className="button secondary full-width" disabled={assessing || !image || !note.trim() || !selected} onClick={() => void assess()}>{assessing ? "Examining visible signs…" : "Assess with AI"}</button>
+            {assessmentError && <p role="alert">{assessmentError}</p>}
+            {assessment && <section className="panel"><h3>AI-assisted observation</h3><p>Not a confirmed diagnosis.</p>{!assessment.usableImage && <p>Please take a clearer plant photo.</p>}<h4>Visible symptoms</h4><ul>{assessment.visibleSymptoms.map((x,i)=><li key={i}>{x}</li>)}</ul><h4>Possible causes</h4><ul>{assessment.possibleCauses.map((x,i)=><li key={i}>{x}</li>)}</ul><p><strong>Uncertainty:</strong> {assessment.uncertainty}</p><h4>Inspect next</h4><ul>{assessment.inspectNext.map((x,i)=><li key={i}>{x}</li>)}</ul><p><strong>Expert help:</strong> {assessment.consultExpert}</p></section>}
             <button
               className="button primary full-width"
-              disabled={!image || !note.trim() || !selected}
+              disabled={assessing || !image || !note.trim() || !selected}
             >
               <Check size={17} />
               Save observation
@@ -864,8 +887,7 @@ export function PlantCheck({
             Honest uncertainty.
           </h2>
           <p className="body-copy muted">
-            The connected version will consider your photos, plant history, and
-            symptoms together.
+            Request an assessment of your photo and symptoms, or save an observation to compare later.
           </p>
           <button
             className="button secondary full-width"

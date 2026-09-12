@@ -59,8 +59,11 @@ import {
   pictures,
   filterListings,
 } from "@/lib/data";
+import { LiveWeather } from "./live-weather";
+import { cloudInfo, backupGarden, restoreGarden } from "@/lib/cloud";
+import { privateGarden } from "@/lib/cloud-schema";
 import { CloudAccount } from "./cloud-account";
-import { readState, saveState } from "@/lib/storage";
+import { readState, saveState, readPendingRevision } from "@/lib/storage";
 import { Modal, Field, Upload, Empty, Photo } from "./primitives";
 import {
   PlantForm,
@@ -91,7 +94,10 @@ const titles: Record<View, string> = {
   profile: "Profile & settings",
   plans: "Rootory Plus",
 };
-export default function Rootory() {
+export default function Rootory({owner = ""}: {owner?: string}) {
+  const cloudRevision = useRef(0);
+  const cloudQueue = useRef(Promise.resolve());
+  const scope = owner ? `account:${owner}` : "state";
   const [data, setData] = useState<State | null>(null);
   const [view, setView] = useState<View>("home");
   const [selectedPlant, setSelectedPlant] = useState<string | null>(null);
@@ -123,21 +129,42 @@ export default function Rootory() {
     go("plants");
     setSelectedPlant(id);
   };
-  const update = (fn: (s: State) => State) =>
+  const update = (fn: (s: State) => State) => {
+    if (owner && !loaded) { notify("Cloud records must load successfully before editing. Your cached records are available to export."); return; }
     setData((prev) => (prev ? fn(prev) : prev));
+  };
   useEffect(() => {
-    readState()
-      .then((stored) => {
-        setData(stored || seed());
-        setLoaded(true);
-      })
-      .catch(() => {
-        setData(seed());
-        setLoaded(true);
-        setStorageError(
-          "Device storage is unavailable. Changes will last only until this page closes.",
-        );
-      });
+    let cancelled = false;
+    (async () => {
+      try {
+        let stored = await readState(scope);
+        if (owner) {
+          const info = await cloudInfo();
+          const pending = await readPendingRevision(scope);
+          if (stored && pending !== undefined) {
+            cloudRevision.current = pending;
+            // Preserve unsynced local edits across reloads. The server rejects a stale revision.
+          } else if (info) {
+            const remote = await restoreGarden();
+            const base = seed();
+            stored = { ...base, ...remote.garden };
+            cloudRevision.current = remote.revision;
+          } else {
+            const base = seed();
+            stored = { ...base, plants: [], entries: [], tasks: [], notices: [], profile: { ...base.profile, name: "Grower", location: "", bio: "" } };
+          }
+        }
+        if (!cancelled) { setData(stored || seed()); setLoaded(true); }
+      } catch {
+        const cached = await readState(scope).catch(() => undefined);
+        if (!cancelled) {
+          setData(cached || seed());
+          setStorageError(owner ? "Cloud garden could not be loaded. Reconnect and reload before editing account records." : "Device storage is unavailable.");
+          // Do not autosave fallback/demo data over an account after a failed load.
+          setLoaded(!owner);
+        }
+      }
+    })();
     const handleHash = () => {
       const candidate = window.location.hash.slice(1) as View;
       if (candidate in titles) {
@@ -163,6 +190,7 @@ export default function Rootory() {
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production")
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     return () => {
+      cancelled = true;
       window.removeEventListener("hashchange", handleHash);
       window.removeEventListener("popstate", handleHash);
       window.removeEventListener("online", handleNetwork);
@@ -173,14 +201,21 @@ export default function Rootory() {
   useEffect(() => {
     if (!data || !loaded) return;
     setSaved(false);
-    saveState(data)
-      .then(() => setSaved(true))
-      .catch(() =>
-        setStorageError(
-          "Could not save changes on this device. Export your records before closing the page.",
-        ),
-      );
-  }, [data, loaded]);
+    const snapshot = data;
+    const timer = setTimeout(() => {
+      const persist = async () => {
+        await saveState(snapshot, scope, owner ? cloudRevision.current : undefined);
+        if (owner) {
+          cloudRevision.current = await backupGarden(privateGarden(snapshot), cloudRevision.current);
+          await saveState(snapshot, scope, null);
+        }
+      };
+      cloudQueue.current = cloudQueue.current.catch(() => {}).then(persist);
+      cloudQueue.current.then(() => { setSaved(true); setStorageError(""); }).catch((e) =>
+        setStorageError(owner ? `Saved on this device, but cloud sync failed: ${e instanceof Error ? e.message : "Reconnect and reload."}` : "Could not save on this device. Export your records before closing."));
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [data, loaded, owner, scope]);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 4500);
@@ -502,8 +537,7 @@ export default function Rootory() {
     <div className="inline-note">
       <Info size={16} />
       <span>
-        Demo workspace · Sample growers and conditions. Your changes are saved
-        only on this device.
+        {owner ? "Account plant records sync privately. Community, marketplace and regional alerts remain demonstrations." : "Demo workspace · Plant records stay on this device until you sign into an account. Community and marketplace are demonstrations."}
       </span>
     </div>
   );
@@ -763,45 +797,7 @@ export default function Rootory() {
                       Add a reminder
                     </button>
                   </section>
-                  <section className="weather-card">
-                    <div className="row between">
-                      <span>
-                        <MapPin size={13} />
-                        Pune, Maharashtra
-                      </span>
-                      <span className="sample-tag">SAMPLE</span>
-                    </div>
-                    <div className="weather-main">
-                      <div>
-                        <strong>27°</strong>
-                        <p>Partly cloudy</p>
-                      </div>
-                      <CloudSun size={66} strokeWidth={1.2} />
-                    </div>
-                    <div className="weather-metrics">
-                      <span>
-                        <Droplets size={15} />
-                        72% humidity
-                      </span>
-                      <span>
-                        <Wind size={15} />9 km/h
-                      </span>
-                    </div>
-                    <div className="weather-advice">
-                      <CloudRain size={17} />
-                      <p>
-                        Example: rain later today.
-                        <br />
-                        <small>Not a live forecast.</small>
-                      </p>
-                    </div>
-                    <button
-                      className="text-button"
-                      onClick={() => setModal({ type: "weather" })}
-                    >
-                      View example forecast <ArrowUpRight size={15} />
-                    </button>
-                  </section>
+                  <LiveWeather />
                   <button className="scan-promo" onClick={() => go("check")}>
                     <span className="scan-icon">
                       <ScanLine size={24} />
@@ -1621,7 +1617,7 @@ export default function Rootory() {
                               id: uid(),
                               plantId,
                               kind: "Whole-plant photo",
-                              note: "Context photo for the accompanying observation. No AI assessment performed.",
+                              note: "Context photo for the accompanying observation. This whole-plant image was not sent for AI assessment.",
                               image: wholeImage,
                               date,
                             },
@@ -1631,7 +1627,7 @@ export default function Rootory() {
                     ],
                   }));
                   notify(
-                    "Observation saved. No AI assessment has been performed.",
+                    "Observation saved to your plant timeline.",
                   );
                   openPlant(plantId);
                 }}
@@ -1655,7 +1651,7 @@ export default function Rootory() {
                       <p>
                         {data.profile.role} · {data.profile.location}
                       </p>
-                      <span className="demo-pill">Device-local demo</span>
+                      <span className="demo-pill">{owner ? "Account garden" : "Device-local demo"}</span>
                     </div>
                   </div>
                   <ProfileForm
@@ -1667,8 +1663,10 @@ export default function Rootory() {
                   />
                 </section>
                 <aside>
-                  <CloudAccount state={data} onRestore={(garden) => {
-                    update((s) => ({ ...s, ...garden }));
+                  <CloudAccount automatic={Boolean(owner)} state={data} onRestore={(garden, revision) => {
+                    if (revision !== undefined) cloudRevision.current = revision;
+                    setLoaded(true);
+                    setData((s) => s ? ({ ...s, ...garden }) : s);
                     setSelectedPlant(null);
                   }} />
                   <section className="panel margin-top">
@@ -1697,6 +1695,7 @@ export default function Rootory() {
                       Install Rootory
                     </button>
                     <button
+                      disabled={Boolean(owner)}
                       className="text-button danger margin-top"
                       onClick={() => setModal({ type: "reset" })}
                     >
@@ -1718,11 +1717,11 @@ export default function Rootory() {
                       </p>
                       <p>
                         <Clock3 size={17} />
-                        Plant AI <span>Next phase</span>
+                        Plant AI <span>Available after sign-in</span>
                       </p>
                       <p>
                         <Clock3 size={17} />
-                        Live weather <span>Next phase</span>
+                        Live weather <span>Open-Meteo</span>
                       </p>
                     </div>
                   </section>
@@ -1839,7 +1838,7 @@ export default function Rootory() {
             </span>
             <span>
               {!online ? "Offline · " : ""}
-              {saved ? "Saved on this device" : "Saving…"}
+              {saved ? (owner ? "Saved to your account" : "Saved on this device") : "Saving…"}
             </span>
           </footer>
         </div>

@@ -4,9 +4,13 @@
 
 Rootory is a mobile-friendly growing workspace for farmers and home gardeners, built for Bit N Build — Track 3: Jan Jeevan.
 
-## Current delivery: frontend prototype
+## Current delivery: backend integration in progress
 
-This version deliberately uses a **device-local demo workspace**. It does not create real accounts, contact sellers, perform AI diagnosis, fetch live weather, accept payments, or notify nearby farmers. All sample content is labelled. User-created records are stored in IndexedDB in the current browser/origin.
+Supabase password/email authentication and password recovery, private account plant records with automatic revision-checked saving, private photo storage, a server-side Gemini assessment endpoint, and live Open-Meteo weather are implemented. Signed-out visitors retain a local demo. Account caches are separated by user ID; failed syncs retain local edits.
+
+**Community, marketplace, regional alerts and subscriptions remain local demonstrations.** No payments, seller delivery, public moderation or nearby-alert delivery is connected. This is not a finished production service.
+
+Apply both SQL migrations in order and configure `.env.local` using `.env.example`. See `docs/BACKEND-SETUP.md`. The second migration adds `profiles`, `plants`, `plant_updates`, `reminders`, `health_observations` and an authenticated hourly AI request counter. The revision-checked garden transaction materializes these relational rows atomically; record fields are stored as JSON per row in this hackathon implementation.
 
 ### Working interactions
 
@@ -16,7 +20,7 @@ This version deliberately uses a **device-local demo workspace**. It does not cr
 - Share a private timeline entry into the demo community; create posts, like, bookmark and comment.
 - Filter/search marketplace listings, create/edit your own listings, mark them unavailable, and save enquiries locally.
 - Read/unread notification states and a clearly labelled report-review simulation.
-- Record plant-health observations with close-up and whole-plant photographs. A separate canned result demonstrates the intended AI interface; it is never an analysis of the uploaded image.
+- Record plant-health observations with close-up and whole-plant photographs. Signed-in users can request a Gemini assessment of the close-up photo. A separately labelled sample result remains available.
 - Edit profile/preferences; export records or reset the demo workspace.
 - View a subscription concept and save interest locally, without a payment or external signup.
 - Responsive desktop/mobile navigation, keyboard-accessible dialogs, error/empty states.
@@ -44,7 +48,7 @@ npm run build -- --webpack
 npm start
 ```
 
-Development does not register the service worker. Install/offline testing uses the production build. Visit once online to cache the shell. This is not offline AI; AI is not connected.
+Development does not register the service worker. Install/offline testing uses the production build. Visit once online to cache the shell. AI and live weather require a network connection. Account records require a successful cloud load before editing; demo records remain usable offline.
 
 ## Verification
 

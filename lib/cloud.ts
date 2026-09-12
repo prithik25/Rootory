@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import { gardenSchema, photoPath, type Garden } from "./cloud-schema";
 const bucket = "garden-photos";
+const uploadedPaths=new Set<string>();
 async function owner() {
   const {data,error}=await supabase().auth.getUser();
   if(error || !data.user)throw new Error("Please sign in again before accessing your cloud garden.");
@@ -25,8 +26,11 @@ async function encodePhotos(garden:Garden,user:string) {
     const digest=await crypto.subtle.digest("SHA-256",bytes);
     const hash=Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,"0")).join("");
     const path=`${user}/${hash}.jpg`;
-    const {error}=await supabase().storage.from(bucket).upload(path,bytes,{contentType:"image/jpeg",upsert:false});
-    if(error && !("statusCode" in error && String(error.statusCode)==="409"))throw new Error("Photo upload failed. Your existing backup has not been replaced.");
+    if(!uploadedPaths.has(path)) {
+      const {error}=await supabase().storage.from(bucket).upload(path,bytes,{contentType:"image/jpeg",upsert:false});
+      if(error && !("statusCode" in error && String(error.statusCode)==="409"))throw new Error("Photo upload failed. Your existing backup has not been replaced.");
+      uploadedPaths.add(path);
+    }
     const ref=`private:${path}`;
     uploads.set(item.image,ref);item.image=ref;
   }
@@ -56,7 +60,7 @@ export async function restoreGarden():Promise<{garden:Garden;revision:number}> {
     if(result.error)throw new Error("A backup photo could not be downloaded. Restore was cancelled; local records have not changed.");
     if(result.data.size>2*1024*1024)throw new Error("Backup photo exceeds the size limit.");
     const value=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(new Error("Could not read a backup photo."));reader.readAsDataURL(new Blob([result.data],{type:"image/jpeg"}));});
-    downloaded.set(path,value);item.image=value;
+    downloaded.set(path,value);uploadedPaths.add(path);item.image=value;
   }
   return {garden:gardenSchema.parse(garden),revision:data.revision};
 }

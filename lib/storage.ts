@@ -6,18 +6,21 @@ const database = () =>
       db.createObjectStore("workspace");
     },
   });
-export async function readState(): Promise<State | undefined> {
+export async function readState(scope = "state"): Promise<State | undefined> {
   const db = await database();
-  const value = await db.get("workspace", "state");
+  const value = await db.get("workspace", scope);
   return value?.version === 1 ? value : undefined;
 }
 let writes = Promise.resolve();
-export function saveState(state: State) {
+export function saveState(state: State, scope = "state", pendingRevision?: number | null) {
   writes = writes
     .catch(() => {})
     .then(async () => {
       const db = await database();
-      await db.put("workspace", state, "state");
+      const tx = db.transaction("workspace", "readwrite");
+      await tx.store.put(state, scope);
+      if (pendingRevision !== undefined) await tx.store.put(pendingRevision, `${scope}:pending`);
+      await tx.done;
     });
   return writes;
 }
@@ -45,4 +48,10 @@ export async function imageFromFile(file: File): Promise<string> {
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
   return canvas.toDataURL("image/jpeg", 0.82);
+}
+
+export async function readPendingRevision(scope: string): Promise<number | undefined> {
+  const db = await database();
+  const value = await db.get("workspace", `${scope}:pending`);
+  return typeof value === "number" ? value : undefined;
 }

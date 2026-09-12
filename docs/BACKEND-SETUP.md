@@ -20,3 +20,19 @@ Official references:
 - https://supabase.com/docs/guides/auth/auth-email-passwordless
 - https://supabase.com/docs/guides/database/postgres/row-level-security
 - https://supabase.com/docs/guides/storage/security/access-control
+
+## Password login and recovery
+
+Password login is the default. Forgot password requests a recovery email, verifies its code with type `recovery`, then calls authenticated `updateUser` to change the password. Configure Authentication → Email Templates → Reset Password with `<h2>Your Rootory reset code</h2><p>{{ .Token }}</p>`. Email quotas still apply. No reset email or actual password change was executed during local implementation checks.
+
+## Account data and live-service integration (migration 002)
+
+Run `supabase/migrations/202609120002_account_gardens.sql` after 001. Signed-in gardens now save automatically, with 700 ms debounce and a serialized revision-checked queue. IndexedDB caches use account-specific keys. Pending sync revisions persist so reload does not discard unsynced edits; conflicts require export and explicit cloud restore rather than silent overwrite. Direct table writes are revoked; the authenticated transaction updates the garden and materializes owner-scoped records. This full-garden transaction is suitable for the prototype, not high-volume collaborative editing.
+
+AI: `/api/plant-health` verifies the Supabase bearer token, enforces bounded request size, decodes/re-encodes the image server-side, claims one of ten requests per account per UTC hour using Postgres, and validates Gemini JSON output. Secrets stay on the server. Invalid tokens never call Gemini. The image and symptom description are sent to Google when the user requests assessment; whole-plant photos and weather are not yet included. Successful results can be saved to the plant timeline. No pesticide dose or soil chemistry is requested.
+
+Weather: `/api/weather` validates and rounds coordinates, requests Open-Meteo, and returns timestamped current weather and the matching hour's rain probability. Browser location is requested only after a button click. Coordinates are not stored in public profile fields. Optional manual city selection works without geolocation permissions.
+
+Verified: production build, 12 unit tests, live weather request and browser rendering, invalid-coordinate rejection, unauthenticated AI rejection, model/key availability, and anonymous denials for new tables. Full authenticated CRUD and AI endpoint tests remain pending a signed-in test account. Neither passwords nor secret keys are in source control.
+
+Live provider smoke test: Gemini 2.5 Flash returned a model-retirement error for this project. The default was updated to `gemini-3.6-flash`; a sample basil photo returned a schema-valid assessment. This tests provider generation separately from the authenticated application endpoint. GitHub and Vercel publication were deferred at the user's request.

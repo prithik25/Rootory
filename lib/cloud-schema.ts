@@ -3,7 +3,7 @@ import type { State } from "./data";
 const text = z.string().max(5000);
 const id = z.string().min(1).max(100);
 const image = z.string().max(3_000_000).refine(v => v === "" || /^\/assets\/[a-z-]+\.webp$/.test(v) || /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(v) || /^private:[0-9a-f-]{36}\/[0-9a-f]{64}\.jpg$/.test(v), "Unsupported photo format");
-const date = z.string().refine(v => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(v), "Invalid date");
+const date = z.string().refine(v => v === "" || /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}\.\d{3}Z)?$/.test(v), "Invalid date");
 export const gardenSchema = z.object({
   version: z.literal(1),
   plants: z.array(z.object({id,name:text,crop:text,category:text,date,location:text,setting:text,quantity:text,soil:text,image,stage:z.enum(["Growing","Harvested"])}).strict()).max(500),

@@ -28,5 +28,8 @@
     "@types/react-dom": "latest",
     "vitest": "latest",
     "@playwright/test": "latest"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }
