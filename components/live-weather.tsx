@@ -9,7 +9,15 @@ import {
   RefreshCw,
   Info,
   LoaderCircle,
+  Search,
+  X,
+  Navigation,
 } from "lucide-react";
+import {
+  POPULAR_LOCATIONS,
+  searchLocations,
+  type LocationOption,
+} from "@/lib/locations";
 
 type Weather = {
   temperature: number;
@@ -20,14 +28,6 @@ type Weather = {
   timezone: string;
 };
 
-const CITIES: Record<string, [number, number]> = {
-  Pune: [18.52, 73.86],
-  Mumbai: [19.08, 72.88],
-  Nashik: [20.0, 73.79],
-  Bengaluru: [12.97, 77.59],
-  Delhi: [28.61, 77.21],
-};
-
 export function LiveWeather() {
   const [weather, setWeather] = useState<Weather | null>(null);
   const [busy, setBusy] = useState(false);
@@ -35,6 +35,15 @@ export function LiveWeather() {
   const [place, setPlace] = useState("Detecting location…");
   const [isAutoDetected, setIsAutoDetected] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // Location selector state
+  const [selecting, setSelecting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<LocationOption[]>(
+    POPULAR_LOCATIONS.slice(0, 12),
+  );
+  const [searching, setSearching] = useState(false);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   const activeCoords = useRef<{ lat: number; lon: number; label: string }>({
     lat: 18.52,
@@ -61,6 +70,36 @@ export function LiveWeather() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function detectGpsLocation() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setError("GPS not available in this browser. Choose a city below.");
+      return;
+    }
+    setBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(2));
+        const lon = Number(pos.coords.longitude.toFixed(2));
+        const label = "Your location";
+        activeCoords.current = { lat, lon, label };
+        setIsAutoDetected(true);
+        setSelecting(false);
+        try {
+          localStorage.setItem(
+            "rootory_weather_coords",
+            JSON.stringify({ lat, lon, label, isAuto: true }),
+          );
+        } catch {}
+        void loadForecast(lat, lon, label);
+      },
+      () => {
+        setBusy(false);
+        setError("GPS permission denied or timed out. Pick a city below.");
+      },
+      { timeout: 8000, maximumAge: 300000, enableHighAccuracy: false },
+    );
   }
 
   useEffect(() => {
@@ -153,6 +192,7 @@ export function LiveWeather() {
       isMounted = false;
       clearInterval(intervalTimer);
       document.removeEventListener("visibilitychange", handleVisibility);
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
   }, []);
 
@@ -164,23 +204,42 @@ export function LiveWeather() {
     );
   };
 
-  const handleCityChange = (cityName: string) => {
-    const point = CITIES[cityName];
-    if (!point) return;
-    activeCoords.current = { lat: point[0], lon: point[1], label: cityName };
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+
+    if (!val.trim()) {
+      setSearchResults(POPULAR_LOCATIONS.slice(0, 12));
+      setSearching(false);
+      return;
+    }
+
+    setSearching(true);
+    debounceTimer.current = setTimeout(async () => {
+      const results = await searchLocations(val);
+      setSearchResults(results);
+      setSearching(false);
+    }, 250);
+  };
+
+  const selectLocation = (loc: LocationOption) => {
+    activeCoords.current = { lat: loc.lat, lon: loc.lon, label: loc.name };
     setIsAutoDetected(false);
+    setSelecting(false);
+    setSearchQuery("");
+    setSearchResults(POPULAR_LOCATIONS.slice(0, 12));
     try {
       localStorage.setItem(
         "rootory_weather_coords",
         JSON.stringify({
-          lat: point[0],
-          lon: point[1],
-          label: cityName,
+          lat: loc.lat,
+          lon: loc.lon,
+          label: loc.name,
           isAuto: false,
         }),
       );
     } catch {}
-    void loadForecast(point[0], point[1], cityName);
+    void loadForecast(loc.lat, loc.lon, loc.name);
   };
 
   return (
@@ -199,32 +258,230 @@ export function LiveWeather() {
         </button>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "6px 0 12px" }}>
-        <MapPin size={13} style={{ color: "#758766" }} />
-        <span style={{ fontSize: 12, fontWeight: 500 }}>{place}</span>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          margin: "8px 0 10px",
+          flexWrap: "wrap",
+        }}
+      >
+        <MapPin size={13} style={{ color: "#758766", flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: "#32482c" }}>
+          {place}
+        </span>
         {isAutoDetected && (
-          <span className="sample-tag" style={{ fontSize: 9, padding: "2px 6px" }}>
+          <span
+            className="sample-tag"
+            style={{ fontSize: 9, padding: "2px 6px" }}
+          >
             Auto-detected
           </span>
         )}
-        <span style={{ marginLeft: "auto", fontSize: 10, color: "#889777" }}>
+        <button
+          type="button"
+          className="text-button"
+          style={{
+            fontSize: 11,
+            padding: "2px 6px",
+            textDecoration: "underline",
+            cursor: "pointer",
+            fontWeight: 500,
+          }}
+          onClick={() => setSelecting(!selecting)}
+        >
+          {selecting ? "Close" : "Change"}
+        </button>
+        <span
+          style={{
+            marginLeft: "auto",
+            fontSize: 10,
+            color: "#889777",
+          }}
+        >
           Auto-updates every 5m
         </span>
       </div>
 
+      {/* Easy Location Picker */}
+      {selecting && (
+        <div
+          style={{
+            background: "rgba(255,255,255,0.85)",
+            border: "1px solid #dce4ce",
+            borderRadius: 12,
+            padding: 12,
+            margin: "8px 0 14px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              alignItems: "center",
+              marginBottom: 8,
+            }}
+          >
+            <div
+              className="search-field"
+              style={{
+                flex: 1,
+                margin: 0,
+                background: "#fff",
+                borderRadius: 8,
+                padding: "4px 8px",
+              }}
+            >
+              <Search size={14} style={{ color: "#758766" }} />
+              <input
+                autoFocus
+                placeholder="Search city (e.g. Goa, Pune, Jaipur)…"
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                style={{
+                  fontSize: 12,
+                  border: "none",
+                  outline: "none",
+                  width: "100%",
+                  background: "transparent",
+                }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="icon-button borderless small-icon"
+                  onClick={() => handleSearchChange("")}
+                  style={{ padding: 2 }}
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              className="button secondary"
+              style={{ padding: "5px 10px", fontSize: 11 }}
+              onClick={() => setSelecting(false)}
+            >
+              Done
+            </button>
+          </div>
+
+          {/* GPS 1-tap button */}
+          <button
+            type="button"
+            className="button secondary"
+            style={{
+              width: "100%",
+              padding: "6px 10px",
+              fontSize: 11,
+              marginBottom: 8,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+            }}
+            onClick={detectGpsLocation}
+          >
+            <Navigation size={12} />
+            Use my current GPS location
+          </button>
+
+          <div style={{ fontSize: 11, color: "#758766", marginBottom: 6 }}>
+            {searchQuery ? "Matching locations:" : "Quick select popular areas:"}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              flexWrap: "wrap",
+              maxHeight: 160,
+              overflowY: "auto",
+            }}
+          >
+            {searchResults.map((loc) => {
+              const isCurrent = place
+                .toLowerCase()
+                .includes(loc.name.toLowerCase());
+              return (
+                <button
+                  key={`${loc.name}-${loc.lat}-${loc.lon}`}
+                  type="button"
+                  className={`sample-tag ${isCurrent ? "active" : ""}`}
+                  style={{
+                    cursor: "pointer",
+                    background: isCurrent ? "#48613d" : "#ffffffcc",
+                    color: isCurrent ? "#fff" : "#48613d",
+                    border: isCurrent
+                      ? "1px solid #48613d"
+                      : "1px solid #d7dfcd",
+                    padding: "4px 8px",
+                    fontSize: 11,
+                    borderRadius: 6,
+                  }}
+                  onClick={() => selectLocation(loc)}
+                >
+                  {loc.name} {loc.state ? `· ${loc.state}` : ""}
+                </button>
+              );
+            })}
+            {searching && (
+              <span
+                style={{
+                  fontSize: 11,
+                  color: "#758766",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: 4,
+                }}
+              >
+                <LoaderCircle size={12} className="spin" /> Searching…
+              </span>
+            )}
+            {!searching && searchResults.length === 0 && (
+              <span style={{ fontSize: 11, color: "#758766", padding: 4 }}>
+                No locations found. Try another name.
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {busy && !weather && (
-        <div style={{ padding: "20px 0", textAlign: "center", color: "#758766" }}>
-          <LoaderCircle className="spin" size={22} style={{ margin: "0 auto 6px" }} />
-          <p style={{ margin: 0, fontSize: 12 }}>Detecting location & loading live forecast…</p>
+        <div
+          style={{
+            padding: "20px 0",
+            textAlign: "center",
+            color: "#758766",
+          }}
+        >
+          <LoaderCircle
+            className="spin"
+            size={22}
+            style={{ margin: "0 auto 6px" }}
+          />
+          <p style={{ margin: 0, fontSize: 12 }}>
+            Detecting location & loading live forecast…
+          </p>
         </div>
       )}
 
       {error && !weather && (
         <div style={{ margin: "12px 0" }}>
-          <p role="status" style={{ fontSize: 12, color: "#c2410c", margin: "0 0 8px" }}>
+          <p
+            role="status"
+            style={{ fontSize: 12, color: "#c2410c", margin: "0 0 8px" }}
+          >
             {error}
           </p>
-          <button className="button secondary" onClick={handleManualRefresh} disabled={busy}>
+          <button
+            className="button secondary"
+            onClick={handleManualRefresh}
+            disabled={busy}
+          >
             Retry forecast
           </button>
         </div>
@@ -253,14 +510,19 @@ export function LiveWeather() {
             </span>
             <span>
               <CloudRain size={14} />{" "}
-              {weather.rainProbability !== null ? `${weather.rainProbability}% rain` : "No rain"}
+              {weather.rainProbability !== null
+                ? `${weather.rainProbability}% rain`
+                : "No rain"}
             </span>
           </div>
 
           <div className="weather-advice">
             <Info size={16} style={{ flexShrink: 0, marginTop: 2 }} />
             <div>
-              <p>Check soil moisture before watering. Weather alone does not diagnose plant health.</p>
+              <p>
+                Check soil moisture before watering. Weather alone does not
+                diagnose plant health.
+              </p>
               <small>
                 {lastUpdated
                   ? `Updated ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · `
@@ -271,50 +533,6 @@ export function LiveWeather() {
           </div>
         </>
       )}
-
-      <details style={{ marginTop: 12, fontSize: 11 }}>
-        <summary style={{ cursor: "pointer", color: "#758766" }}>
-          Change area manually
-        </summary>
-        <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {Object.keys(CITIES).map((c) => (
-            <button
-              key={c}
-              className={`sample-tag ${place === c ? "active" : ""}`}
-              style={{
-                cursor: "pointer",
-                background: place === c ? "#48613d" : undefined,
-                color: place === c ? "#fff" : undefined,
-              }}
-              onClick={() => handleCityChange(c)}
-            >
-              {c}
-            </button>
-          ))}
-          {typeof navigator !== "undefined" && "geolocation" in navigator && (
-            <button
-              className="sample-tag"
-              style={{ cursor: "pointer" }}
-              onClick={() => {
-                navigator.geolocation.getCurrentPosition(
-                  (pos) => {
-                    const lat = Number(pos.coords.latitude.toFixed(2));
-                    const lon = Number(pos.coords.longitude.toFixed(2));
-                    const label = "Your location";
-                    activeCoords.current = { lat, lon, label };
-                    setIsAutoDetected(true);
-                    void loadForecast(lat, lon, label);
-                  },
-                  () => {},
-                  { timeout: 8000 },
-                );
-              }}
-            >
-              Detect my GPS
-            </button>
-          )}
-        </div>
-      </details>
     </section>
   );
 }
