@@ -18,6 +18,7 @@ import {
   searchLocations,
   type LocationOption,
 } from "@/lib/locations";
+import { LocationMap } from "./location-map";
 
 type Weather = {
   temperature: number;
@@ -36,8 +37,9 @@ export function LiveWeather() {
   const [isAutoDetected, setIsAutoDetected] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Location selector state
+  // Location selector & Map state
   const [selecting, setSelecting] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<LocationOption[]>(
     POPULAR_LOCATIONS.slice(0, 12),
@@ -368,28 +370,65 @@ export function LiveWeather() {
             </button>
           </div>
 
-          {/* GPS 1-tap button */}
-          <button
-            type="button"
-            className="button secondary"
-            style={{
-              width: "100%",
-              padding: "6px 10px",
-              fontSize: 11,
-              marginBottom: 8,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-            }}
-            onClick={detectGpsLocation}
-          >
-            <Navigation size={12} />
-            Use my current GPS location
-          </button>
+          {/* GPS and Map Pin Buttons */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            <button
+              type="button"
+              className="button secondary"
+              style={{
+                flex: 1,
+                padding: "6px 8px",
+                fontSize: 11,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 5,
+              }}
+              onClick={detectGpsLocation}
+            >
+              <Navigation size={12} />
+              My GPS Location
+            </button>
+            <button
+              type="button"
+              className="button primary"
+              style={{
+                flex: 1,
+                padding: "6px 8px",
+                fontSize: 11,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 5,
+              }}
+              onClick={() => setShowMap(!showMap)}
+            >
+              <MapPin size={12} />
+              {showMap ? "Hide Map" : "Pin on Map"}
+            </button>
+          </div>
+
+          {/* Interactive Map Component */}
+          {showMap && (
+            <LocationMap
+              initialLat={activeCoords.current.lat}
+              initialLon={activeCoords.current.lon}
+              initialLabel={place}
+              onSelectLocation={(lat, lon, label) => {
+                selectLocation({
+                  name: label,
+                  state: "",
+                  lat,
+                  lon,
+                });
+                setShowMap(false);
+              }}
+              onClose={() => setShowMap(false)}
+            />
+          )}
 
           <div style={{ fontSize: 11, color: "#758766", marginBottom: 6 }}>
-            {searchQuery ? "Matching locations:" : "Quick select popular areas:"}
+            {searchQuery ? "Matching locations:" : "Popular agricultural hubs:"}
           </div>
 
           <div
@@ -420,10 +459,14 @@ export function LiveWeather() {
                     padding: "4px 8px",
                     fontSize: 11,
                     borderRadius: 6,
+                    textAlign: "left",
                   }}
                   onClick={() => selectLocation(loc)}
                 >
-                  {loc.name} {loc.state ? `· ${loc.state}` : ""}
+                  <strong>{loc.name}</strong>{" "}
+                  <span style={{ fontSize: 10, opacity: 0.85 }}>
+                    {loc.nearbyHub ? `(${loc.nearbyHub})` : loc.state ? `· ${loc.state}` : ""}
+                  </span>
                 </button>
               );
             })}
@@ -442,9 +485,19 @@ export function LiveWeather() {
               </span>
             )}
             {!searching && searchResults.length === 0 && (
-              <span style={{ fontSize: 11, color: "#758766", padding: 4 }}>
-                No locations found. Try another name.
-              </span>
+              <div style={{ width: "100%", padding: "4px 0" }}>
+                <p style={{ fontSize: 11, color: "#758766", margin: "0 0 6px" }}>
+                  Location not in quick list.
+                </p>
+                <button
+                  type="button"
+                  className="button secondary"
+                  style={{ fontSize: 11, padding: "5px 10px", width: "100%" }}
+                  onClick={() => setShowMap(true)}
+                >
+                  <MapPin size={12} /> Open map to pin your exact location
+                </button>
+              </div>
             )}
           </div>
         </div>

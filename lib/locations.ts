@@ -3,11 +3,17 @@ export type LocationOption = {
   state: string;
   lat: number;
   lon: number;
+  nearbyHub?: string;
 };
 
 export const POPULAR_LOCATIONS: LocationOption[] = [
+  { name: "Batim", state: "Goa (Tiswadi)", lat: 15.46, lon: 73.88, nearbyHub: "Goa Velha" },
+  { name: "Goa Velha", state: "Goa", lat: 15.44, lon: 73.88, nearbyHub: "Panaji" },
   { name: "Goa (Panaji)", state: "Goa", lat: 15.49, lon: 73.82 },
   { name: "Goa (Margao)", state: "Goa", lat: 15.27, lon: 73.96 },
+  { name: "Goa (Mapusa)", state: "Goa", lat: 15.60, lon: 73.81 },
+  { name: "Goa (Ponda)", state: "Goa", lat: 15.40, lon: 74.02 },
+  { name: "Goa (Vasco)", state: "Goa", lat: 15.40, lon: 73.83 },
   { name: "Pune", state: "Maharashtra", lat: 18.52, lon: 73.86 },
   { name: "Mumbai", state: "Maharashtra", lat: 19.08, lon: 72.88 },
   { name: "Nashik", state: "Maharashtra", lat: 20.00, lon: 73.79 },
@@ -33,6 +39,112 @@ export const POPULAR_LOCATIONS: LocationOption[] = [
   { name: "Shimla", state: "Himachal Pradesh", lat: 31.10, lon: 77.17 },
 ];
 
+export function calculateDistanceKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+export function findNearestKnownLocation(
+  lat: number,
+  lon: number,
+  excludeSelfName?: string,
+): { location: LocationOption; distanceKm: number } | null {
+  let nearest: LocationOption | null = null;
+  let minDistance = Infinity;
+
+  for (const loc of POPULAR_LOCATIONS) {
+    if (
+      excludeSelfName &&
+      loc.name.toLowerCase() === excludeSelfName.toLowerCase()
+    ) {
+      continue;
+    }
+    const dist = calculateDistanceKm(lat, lon, loc.lat, loc.lon);
+    if (dist < minDistance) {
+      minDistance = dist;
+      nearest = loc;
+    }
+  }
+
+  if (nearest) {
+    return { location: nearest, distanceKm: minDistance };
+  }
+  return null;
+}
+
+export async function reverseGeocodeCoords(
+  lat: number,
+  lon: number,
+): Promise<{ label: string; details?: string }> {
+  // 1. Calculate nearest known hub offline
+  const nearest = findNearestKnownLocation(lat, lon);
+  let fallbackLabel = `${lat.toFixed(2)}°, ${lon.toFixed(2)}°`;
+  let fallbackDetails = "";
+
+  if (nearest) {
+    const dist = Math.round(nearest.distanceKm);
+    if (dist < 3) {
+      fallbackLabel = nearest.location.name;
+      fallbackDetails = nearest.location.state;
+    } else {
+      fallbackLabel = `Near ${nearest.location.name}`;
+      fallbackDetails = `~${dist} km from ${nearest.location.name}`;
+    }
+  }
+
+  // 2. Try online reverse geocoding via OpenStreetMap Nominatim for exact local village/town
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+      {
+        headers: { "Accept-Language": "en" },
+        signal: AbortSignal.timeout(3500),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const addr = data.address || {};
+      const localName =
+        addr.village ||
+        addr.suburb ||
+        addr.town ||
+        addr.city ||
+        addr.county ||
+        data.name;
+
+      if (localName) {
+        if (nearest && nearest.location.name.toLowerCase() !== localName.toLowerCase()) {
+          const dist = Math.round(nearest.distanceKm);
+          return {
+            label: localName,
+            details: dist <= 20 ? `Near ${nearest.location.name} (${dist} km)` : (addr.state || addr.country),
+          };
+        }
+        return {
+          label: localName,
+          details: addr.state ? `${addr.state}, ${addr.country || "India"}` : addr.country,
+        };
+      }
+    }
+  } catch {}
+
+  return { label: fallbackLabel, details: fallbackDetails };
+}
+
 export async function searchLocations(query: string): Promise<LocationOption[]> {
   const q = query.trim().toLowerCase();
   if (!q) return POPULAR_LOCATIONS.slice(0, 12);
@@ -55,12 +167,23 @@ export async function searchLocations(query: string): Promise<LocationOption[]> 
     const data = await res.json();
     if (!data.results || !Array.isArray(data.results)) return localMatches;
 
-    const remoteMatches: LocationOption[] = data.results.map((r: any) => ({
-      name: r.name,
-      state: r.admin1 ? `${r.admin1}, ${r.country || ""}`.trim() : r.country || "",
-      lat: Number(r.latitude.toFixed(2)),
-      lon: Number(r.longitude.toFixed(2)),
-    }));
+    const remoteMatches: LocationOption[] = data.results.map((r: any) => {
+      const lat = Number(r.latitude.toFixed(2));
+      const lon = Number(r.longitude.toFixed(2));
+      const nearest = findNearestKnownLocation(lat, lon, r.name);
+      let nearbyInfo: string | undefined = undefined;
+      if (nearest && nearest.distanceKm < 30) {
+        nearbyInfo = `Near ${nearest.location.name} (~${Math.round(nearest.distanceKm)} km)`;
+      }
+
+      return {
+        name: r.name,
+        state: r.admin1 ? `${r.admin1}, ${r.country || ""}`.trim() : r.country || "",
+        lat,
+        lon,
+        nearbyHub: nearbyInfo,
+      };
+    });
 
     const seen = new Set(localMatches.map((m) => `${m.lat},${m.lon}`));
     const combined = [...localMatches];
