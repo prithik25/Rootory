@@ -1,5 +1,5 @@
 /* Device-local frontend only. Never cache API calls or cross-origin data. */
-const CACHE = "rootory-shell-v1";
+const CACHE = "rootory-shell-v2";
 const CORE = [
   "/",
   "/icon.svg",
@@ -50,7 +50,8 @@ self.addEventListener("fetch", (event) => {
   if (
     request.method !== "GET" ||
     url.origin !== self.location.origin ||
-    url.pathname.startsWith("/api/")
+    url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/auth/")
   )
     return;
   if (request.mode === "navigate") {

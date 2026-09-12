@@ -2,108 +2,69 @@
 
 **Track growth. Share knowledge. Connect to markets.**
 
-Rootory is a mobile-friendly growing workspace for farmers and home gardeners, built for Bit N Build — Track 3: Jan Jeevan.
+A mobile-friendly farmer and gardener workspace for Bit N Build, Track 3 — Jan Jeevan.
 
-## Current delivery: backend integration in progress
+[Live prototype](https://rootory-seven.vercel.app/) · [Public repository](https://github.com/prithik25/Rootory)
 
-Supabase password/email authentication and password recovery, private account plant records with automatic revision-checked saving, private photo storage, a server-side Gemini assessment endpoint, and live Open-Meteo weather are implemented. Signed-out visitors retain a local demo. Account caches are separated by user ID; failed syncs retain local edits.
+## Problem and solution
 
-**Marketplace, regional alerts and subscriptions remain local demonstrations.** Signed-in community posts, comments, likes and bookmarks now use shared Supabase tables. Community photos are public only when explicitly shared. No payments, seller delivery, public moderation or nearby-alert delivery is connected. This is not a finished production service.
+Plant records, care observations, local growing knowledge and selling opportunities often sit in separate tools. Rootory connects a plant's timeline with cautious photo observations, shared community posts and produce listings. Reviewed local crop reports are designed to help nearby growers notice relevant problems without presenting unconfirmed reports as diagnoses.
 
-Apply all three SQL migrations in order and configure `.env.local` using `.env.example`. See `docs/BACKEND-SETUP.md`. The second migration adds `profiles`, `plants`, `plant_updates`, `reminders`, `health_observations` and an authenticated hourly AI request counter. The revision-checked garden transaction materializes these relational rows atomically; record fields are stored as JSON per row in this hackathon implementation.
+## Implemented
 
-### Working interactions
+- Password sign-in, signup, session handling, logout and email-code recovery UI. Email delivery depends on Supabase mail configuration and quotas.
+- Private account gardens, plant timelines, reminders and photographs with automatic revision-checked saves and per-account offline caches.
+- Shared community posts, comments, likes and private bookmarks.
+- Public marketplace listings, owner edits/availability and private buyer/seller enquiries. No payments or fulfilment.
+- Gemini photo assessment through an authenticated server endpoint: visible symptoms, possible causes, uncertainty and inspection suggestions. No pesticide dosage, soil chemistry or diagnostic accuracy claims.
+- Timestamped Open-Meteo weather with manual city selection or optional geolocation.
+- Private approximate locations, pending crop reports, administrator review and same-crop alerts within 10 km for reports no older than seven days. In-app refresh only; no background push.
+- Server-enforced administrator membership and basic post/listing moderation. A private administrator account still needs provisioning and end-to-end review testing.
+- Responsive UI, photo validation, manifest/icons, production service worker and cached demo workspace.
 
-- Create and edit plant profiles, optional photos, planting dates, growing spaces and manual growth stages.
-- Record care/progress entries and photographs in a plant timeline.
-- Add reminders and mark tasks complete; completion is written to the timeline.
-- Share a private timeline entry into the demo community; create posts, like, bookmark and comment.
-- Filter/search marketplace listings, create/edit your own listings, mark them unavailable, and save enquiries locally.
-- Read/unread notification states and a clearly labelled report-review simulation.
-- Record plant-health observations with close-up and whole-plant photographs. Signed-in users can request a Gemini assessment of the close-up photo. A separately labelled sample result remains available.
-- Edit profile/preferences; export records or reset the demo workspace.
-- View a subscription concept and save interest locally, without a payment or external signup.
-- Responsive desktop/mobile navigation, keyboard-accessible dialogs, error/empty states.
-- Production web app manifest, icons and service worker for an installable cached app shell; IndexedDB data remains available offline on the same device.
+Signed-out data and illustrative notices are labelled demonstrations. The subscription screen is a concept; there is no billing, verified-batch programme or completed seller-review system.
 
-## Run locally
+## Run
 
-Requirements: Node.js 22+ and npm.
+Use Node.js 22 and npm. Copy `.env.example` to `.env.local` and set the Supabase project URL, public client key and server-only Gemini key. Run all five migrations in `supabase/migrations` in filename order. See `docs/BACKEND-SETUP.md`.
 
 ```bash
 npm ci
 npm run dev
-```
-
-Open http://127.0.0.1:3000. If your environment hits file-watcher limits:
-
-```bash
-WATCHPACK_POLLING=true npm run dev -- --webpack
-```
-
-Production:
-
-```bash
+npm test
+npm run typecheck
 npm run build -- --webpack
 npm start
 ```
 
-Development does not register the service worker. Install/offline testing uses the production build. Visit once online to cache the shell. AI and live weather require a network connection. Account records require a successful cloud load before editing; demo records remain usable offline.
+If local file watching fails, use `WATCHPACK_POLLING=true npm run dev -- --webpack`. Production is required for service-worker testing. AI, weather and shared data need connectivity; account editing requires an initial successful cloud load.
 
-## Verification
+## Technology and security boundaries
 
-```bash
-npm run typecheck
-npm test
-npm run build -- --webpack
-```
+Next.js, React, TypeScript, custom CSS, Radix Dialog, Lucide, IndexedDB, Supabase Auth/Postgres/Storage, Google GenAI SDK, Zod and Sharp.
 
-The small unit suite checks combined marketplace filters and future-date handling. Browser smoke tests cover plant creation/persistence, timeline logging, sharing/likes/bookmarks/comments, enquiry history, demo report review and responsive layouts. See `docs/FRONTEND-QA.md` for the recorded checks and limitations.
+Private records use owner-scoped RLS and an authenticated, revision-checked garden RPC. Shared records have owner write policies. Enquiries are visible only to participants. Private photographs require authenticated access; explicitly shared community and marketplace images are public. AI requests verify sessions, bound and decode images, validate output and claim a database-enforced allowance of ten requests per account per hour. Secret keys remain server-side.
 
-## Technology
+The prototype materializes private relational rows from a whole-garden JSON snapshot. It is not a high-volume collaborative database design. Logout retains account-specific browser caches. Account deletion, orphan-photo cleanup, full moderation audit trails, pagination and independent security review remain future work. Never enter private information in the shared judge account.
 
-Next.js 16, React 19, TypeScript, CSS design tokens, Lucide icons, Radix Dialog and IndexedDB (`idb`). Image uploads are resized in the browser and re-encoded to remove metadata. Static demo photographs are optimized to WebP with Sharp. Supabase, Gemini and Zod packages are installed for the next integration phase but are not connected or required to run this frontend.
+## Verified on 13 September 2026
 
-The frontend uses a custom CSS theme rather than Tailwind/shadcn. Radix provides the accessible dialog primitive. The single route uses hash navigation between working surfaces.
+- All 12 automated tests pass; production build passed during integration.
+- Deployed judge password login works.
+- Deployed weather and authenticated AI endpoints returned HTTP 200; AI returned structured uncertainty and usable-image fields.
+- Private photo upload/download matched bytes; public access to the private image was blocked.
+- Community like persisted after browser reload; owner-spoofed writes were rejected.
+- Marketplace listing availability and enquiry routing were checked against the database.
+- Pending crop reporting works; the ordinary judge account cannot approve reports or act as administrator.
 
-## Structure
+Still unverified: distinct-account isolation across every flow, administrator approval through to another grower's radius alert, password-recovery delivery, full AI-result photo-save UI flow and physical-phone PWA installation. These are not claimed complete.
 
-- `app/`: app entry, metadata and global styles.
-- `components/rootory.tsx`: navigation, main surfaces and app state.
-- `components/workflows.tsx`: plant, post, listing, enquiry and observation forms.
-- `components/primitives.tsx`: accessible dialogs, upload and empty/photo states.
-- `lib/data.ts`: typed domain records and labelled sample content.
-- `lib/storage.ts`: device-local persistence and photo preparation.
-- `public/`: PWA assets, service worker and attributed sample imagery.
-- `tests/`: focused domain tests.
+## Deployment and submission
 
-## Next integration phase
+The app is deployed on Vercel. Set the same environment variables there, keep Gemini credentials server-only, and redeploy after environment changes. Configure Supabase site/redirect URLs for the public app when using email links.
 
-1. Supabase Auth, PostgreSQL and Storage, with owner-scoped RLS and server-enforced administrator permissions.
-2. A server-only Gemini endpoint, quotas, validated structured output and reviewed crop guidance.
-3. Weather API with timestamped source attribution and graceful errors.
-4. Reviewed crop reports matched by crop, approximate distance and recency, with private coordinates.
-5. Replace local demo mutations with authenticated backend operations; only then enable shared community and seller enquiries.
-6. Validate crop assessments using independent, labelled field cases. Do not claim diagnostic accuracy from the UI prototype.
+Remaining submission artifacts: six-slide presentation and three-minute recorded demonstration. Do not claim field accuracy or measured farmer impact without independent validation.
 
-Before introducing real accounts, review all local caching behavior: private API responses must never enter the service worker cache, and private device data must be cleared on logout. This frontend is not a security-reviewed production service.
+## Image credits
 
-## Deployment
-
-The repository is compatible with Vercel's Next.js framework preset. No environment variables are needed for this frontend. Import the Git repository and use the standard `npm run build` command. If needed, set the build command to `npm run build -- --webpack`. Use an appropriate hosting plan for commercial operation. No cloud deployment or public repository has been created by this frontend build.
-
-Do not commit keys, passwords or `.env.local`. Future credentials belong in server-side environment variables; no secret may use the `NEXT_PUBLIC_` prefix.
-
-## Data and image credits
-
-The sample growers, stories, prices, reports and weather are illustrative. User uploads remain local. Do not enter sensitive data into a public/shared-browser demo. Browser storage may be cleared by the user or browser; export records you want to keep.
-
-See `public/assets/credits.json` and the in-app Photo credits for Wikimedia Commons source pages, creators and licences. Photographs are illustrative, not diagnostic references.
-
-## Submission checklist
-
-- [ ] Create/publish the public GitHub repository within the hackathon window.
-- [ ] Add the deployed prototype URL to this README and submission.
-- [ ] Connect and test any backend functionality claimed in the pitch.
-- [ ] Prepare the six-slide PPT and three-minute video.
-- [ ] Confirm all links work independently of the developer's login.
+See `public/assets/credits.json` and in-app Photo credits. Sample records and photographs are illustrative, not diagnostic references. Never commit passwords, private keys or `.env.local`.

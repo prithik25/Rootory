@@ -1,22 +1,23 @@
 "use client";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { authRedirectUrl } from "@/lib/auth-redirect";
 import { Field } from "./primitives";
-export function PasswordReset({initialEmail,onClose}:{initialEmail:string;onClose:()=>void}) {
+export function PasswordReset({initialEmail,onClose,recovered=false}:{initialEmail:string;onClose:()=>void;recovered?:boolean}) {
   const [email,setEmail]=useState(initialEmail);
   const [code,setCode]=useState("");
   const [password,setPassword]=useState("");
   const [confirm,setConfirm]=useState("");
-  const [step,setStep]=useState<"email"|"code"|"password"|"done">("email");
+  const [step,setStep]=useState<"email"|"code"|"password"|"done">(recovered?"password":"email");
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
   async function submit(){
     setBusy(true);setMessage("");
     try{
       if(step==="email"){
-        const {error}=await supabase().auth.resetPasswordForEmail(email.trim());
+        const {error}=await supabase().auth.resetPasswordForEmail(email.trim(),{redirectTo:authRedirectUrl()});
         if(error){if(error.status===429 || error.code==="over_email_send_rate_limit")throw new Error("Email limit reached. Try later; password sign-in still works if you remember it.");throw new Error(`Reset email could not be sent: ${error.message}`);}
-        setStep("code");setMessage("If an account exists for this email, a reset code has been requested. Check your inbox and spam folder.");
+        setStep("code");setMessage("If an account exists for this email, a reset email has been requested. Open its link, or enter the code below if included. Check your spam folder too.");
       }else if(step==="code"){
         const {error}=await supabase().auth.verifyOtp({email:email.trim(),token:code.trim(),type:"recovery"});
         if(error)throw new Error("This reset code is invalid or expired. Check the code or request a new one.");

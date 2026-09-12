@@ -4,6 +4,7 @@ import { cloudConfigured, supabase } from "@/lib/supabase";
 import { backupGarden, cloudInfo, restoreGarden } from "@/lib/cloud";
 import { privateGarden, type Garden } from "@/lib/cloud-schema";
 import type { State } from "@/lib/data";
+import { authRedirectUrl } from "@/lib/auth-redirect";
 import { PasswordReset } from "./password-reset";
 import { Field } from "./primitives";
 export function CloudAccount({state,onRestore,automatic=false}:{automatic?:boolean;state:State;onRestore:(garden:Garden,revision?:number)=>void}) {
@@ -33,14 +34,14 @@ export function CloudAccount({state,onRestore,automatic=false}:{automatic?:boole
     {!cloudConfigured?<p className="body-copy muted">Cloud connection is being set up. Your plants and photos continue to save on this device.</p>:<>
       <p className="body-copy muted">Back up your plant records, reminders, profile and photos privately. {automatic ? "Community posts and photos are shared with other signed-in growers. Marketplace listings are public; enquiries go privately to the seller." : "Community posts and marketplace activity stay in the local demo."} {automatic ? "Plant changes save automatically to your account." : "Backups are manual."}</p>
       {resetting?<PasswordReset initialEmail={email} onClose={()=>setResetting(false)}/>:!account?<form className="form" onSubmit={e=>{e.preventDefault();void run(async()=>{
-        if(passwordMode && signingUp){if(password.length<12)throw new Error("Use at least 12 characters for your password.");const {data,error}=await supabase().auth.signUp({email:email.trim(),password});if(error)throw new Error(`Account could not be created: ${error.message}`);setPassword("");if(!data.session){setPasswordMode(false);setSigningUp(false);setSent(true);setMessage("Check your email for the confirmation code. Email delivery limits may apply.");}return;}
+        if(passwordMode && signingUp){if(password.length<12)throw new Error("Use at least 12 characters for your password.");const {data,error}=await supabase().auth.signUp({email:email.trim(),password,options:{emailRedirectTo:authRedirectUrl()}});if(error)throw new Error(`Account could not be created: ${error.message}`);setPassword("");if(!data.session){setPasswordMode(false);setSigningUp(false);setSent(true);setMessage("Check your email. Open the confirmation link, or enter the code here if your email includes one.");}return;}
         if(passwordMode){const {error}=await supabase().auth.signInWithPassword({email:email.trim(),password});if(error)throw new Error("Sign-in failed. Check the email and password of your existing account.");setPassword("");setMessage("Signed in. Check your cloud backup before saving.");return;}
         if(sent){const {error}=await supabase().auth.verifyOtp({email:email.trim(),token:code.trim(),type:"email"});if(error)throw new Error("Code could not be verified. Check it or request another.");setSent(false);setCode("");setMessage("Signed in. Check your existing backup before saving.");}
-        else{const {error}=await supabase().auth.signInWithOtp({email:email.trim()});if(error){
+        else{const {error}=await supabase().auth.signInWithOtp({email:email.trim(),options:{emailRedirectTo:authRedirectUrl()}});if(error){
           if(error.code === "over_email_send_rate_limit" || error.status === 429) throw new Error("Email sending limit reached. Wait before trying again, or configure a custom SMTP provider in Supabase.");
           if(error.code === "email_address_not_authorized") throw new Error("Supabase’s default email service only sends to authorized project-team addresses. Use your Supabase account email for this test, or configure custom SMTP.");
           throw new Error(`Email could not be sent: ${error.message} (${error.code || error.status || "unknown"}).`);
-        }setSent(true);setMessage("Check your email for the sign-in code.");}
+        }setSent(true);setMessage("Check your email. Open the sign-in link, or enter its code here.");}
       });}}>
         <Field label="Account email"><input type="email" autoComplete="email" required maxLength={254} value={email} disabled={sent||busy} onChange={e=>setEmail(e.target.value)}/></Field>
         {passwordMode&&<Field label="Account password"><input type="password" autoComplete={signingUp?"new-password":"current-password"} minLength={signingUp?12:undefined} required value={password} disabled={busy} onChange={e=>setPassword(e.target.value)}/></Field>}
