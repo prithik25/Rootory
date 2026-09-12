@@ -25,282 +25,281 @@
 
 ---
 
-## 🌾 The Problem We're Solving
+## 🎯 Problem Statement
 
-India has over **100 million home gardeners and small-scale growers** — from urban terrace farmers in Pune to rural kitchen-garden keepers in Nashik. They face three critical, interconnected problems:
+> *"Small-scale farmers and home gardeners need to manage several connected activities: tracking plant growth, responding to crop-health problems, learning from other growers, and finding buyers or agricultural supplies. However, information about these activities is often scattered across personal notes, messaging groups, weather apps, and separate marketplaces.*
+>
+> *This fragmentation makes it difficult to maintain a reliable plant-care history, get advice with the right context, learn from others' growing experiences, and discover relevant local trading opportunities. Growers may also miss nearby pest or disease reports that could prompt earlier inspection of their own plants.*
+>
+> **How might we help growers connect their plant-care records, community knowledge, and local market opportunities in one accessible platform so they can make better-informed decisions throughout the growing journey?**"
 
-1. **Isolation of knowledge** — A grower who spots an unusual leaf spot on their tomatoes has no quick, safe way to get a second opinion or alert their neighbours growing the same crop.
-
-2. **No trusted local marketplace** — Surplus produce rots because there is no simple, free, local channel to connect sellers and buyers in the same neighbourhood.
-
-3. **Fragmented tools** — Existing agricultural apps are either too complex for a home grower or designed exclusively for large-scale commercial farming. Nothing bridges the gap between a balcony herb gardener and a small-plot vegetable farmer.
-
-**Rootory** is the growing companion built for *this* gap — a private plant diary, a community board, a local marketplace, and a crop-safety alert network, all in one offline-capable app.
+— Bit N Build 2026, Track 3: Jan Jeevan
 
 ---
 
-## ✨ What Rootory Does — Complete Feature List
+## 💡 Our Solution
+
+Rootory is a **mobile-first, installable PWA** where growers can:
+
+| Pillar | What Rootory delivers |
+|---|---|
+| 🌱 **Track** | Plant profiles with photo diaries, watering/fertilizer/treatment logs, care reminders, and AI-assisted symptom observations |
+| 🤝 **Learn & share** | Community board with progress updates, questions, and harvest stories; likes, comments, and saved posts |
+| 📡 **Stay informed** | Gemini-powered symptom assessments with explicit uncertainty; live Open-Meteo weather; geofenced crop-health alerts reviewed by admins |
+| 🛒 **Trade** | Produce and growing-supplies marketplace with private seller enquiries, saved listings, and availability management |
+
+---
+
+## 🗺️ Navigation — Exactly the Five Destinations
+
+The app uses **exactly the five main destinations** specified in the problem statement:
+
+| Screen | Primary action | What users see |
+|---|---|---|
+| **Home** | Log progress | Today's tasks, plant summaries, live weather, community preview |
+| **My Plants** | Add plant | Plant cards with photo, stage, day count, and location |
+| **Community** | Create post | Progress posts, questions, harvest stories — filtered by type or crop |
+| **Market** | Create listing | Produce and growing supplies with enquiry flow |
+| **Alerts** | Open related action | Care reminders, reviewed crop reports, weather notices |
+
+On **mobile**: bottom tab navigation. On **desktop**: left sidebar. Profile and settings in the top corner. Each screen has **one obvious primary action**.
+
+---
+
+## ✅ Requirement Checklist
+
+### Problem-Statement Requirements
+
+| Requirement | Status | Implementation |
+|---|---|---|
+| Plant profiles with timeline | ✅ Built | `PlantForm`, `LogForm`, `ObservationNote`, plant detail view |
+| Progress photos, watering, fertilizer, treatment, harvest entries | ✅ Built | 6 log types in `LogForm` |
+| "Not assessed" / observation-date state (not silently healthy) | ✅ Built | Timeline shows "Observation" entries; no inferred health state |
+| Private plant records by default | ✅ Built | RLS on `private_gardens`; explicit share-to-community button |
+| Optional turn private update into community post | ✅ Built | "Share with community" button on every timeline entry |
+| 3 post types: Progress update, Question, Harvest story | ✅ Built | `PostForm` type selector |
+| Community: photo, crop tag, text, location, comments, likes, reporting | ✅ Built | Full post card with engagement actions |
+| Marketplace: Produce and Growing supplies categories | ✅ Built | Category filter + `ListingForm` |
+| Listing: photos, title, price, unit, quantity, location, delivery, seller | ✅ Built | Full `ListingForm` fields |
+| Primary action "Send enquiry"; seller sees it in account | ✅ Built | `EnquiryForm` + `route_enquiry()` Postgres trigger |
+| Seller can edit/remove/mark unavailable | ✅ Built | Edit listing + toggle Available/Unavailable from listing detail |
+| Don't expose phone numbers | ✅ Built | Enquiries routed server-side; buyer never sees seller user ID |
+| 3 notification categories: Care, Weather, Community | ✅ Built | `Notice` type with `category: "Care" | "Weather" | "Community"` |
+| Notifications: timestamp, reason, read/unread, link to plant | ✅ Built | Full notification card with "View plant →" shortcut |
+| Local crop alerts: crop + distance + recency matching | ✅ Built | `review_crop_report()` RPC — 10 km radius, 7-day recency |
+| Admin screen: review/approve/reject crop reports | ✅ Built | `CropSafety` admin queue; `moderate_content()` for posts/listings |
+| Admin permissions server-side only | ✅ Built | `admin_members` table; `is_rootory_admin()` RPC; no client elevation |
+| Weather: source + last-updated time; dashboard works if weather fails | ✅ Built | Open-Meteo attribution, forecast time shown; graceful error state |
+| AI assessment: visible symptoms, possible causes, what to inspect next, expert referral | ✅ Built | Gemini `gemini-3.6-flash` with Zod-validated structured output |
+| No invented soil chemistry or treatment dosages from photos | ✅ Built | System prompt explicitly prohibits this |
+| Blurry image → request better photo, not confident answer | ✅ Built | `usableImage: false` flag in AI response schema |
+| Rate limits on expensive assessment requests | ✅ Built | `claim_plant_assessment()` RPC: 10/hour per account |
+| Browse public posts/listings before sign-in | ✅ Built | Demo workspace with seed data; full UI visible without account |
+| Installable PWA | ✅ Built | Service worker, web manifest, iOS apple-touch-icon |
+| Offline app shell | ✅ Built | `/sw.js` caches shell; offline banner shown |
+| Offline plant records accessible | ✅ Built | IndexedDB (`idb`) persists all data locally |
+| Sync status visible | ✅ Built | Footer shows "Saving…" / "Saved to your account" / "Sync needs attention" |
+| Authentication & server-side ownership checks | ✅ Built | Supabase Auth + RLS on every table |
+| Upload validation + server-side protected keys | ✅ Built | Zod schema validation; GEMINI_API_KEY server-only; 3.1 MB limit |
+| Approximate public locations | ✅ Built | Coordinates rounded to ~1 km before storage; locality names only |
+| Report/delete controls | ✅ Built | Flag post, delete own post, admin moderation |
+| Subscription page with "Register interest" | ✅ Built | Rootory Plus page; interest saved locally |
+| Records export | ✅ Built | "Export my records" → `rootory-my-records.json` |
+| Public GitHub repository | ✅ Built | https://github.com/prithik25/Rootory |
+| README with setup, architecture, limitations, demo instructions | ✅ Built | This document |
+| Deployed HTTPS URL | ✅ Live | https://rootory-seven.vercel.app/ |
+| Seeded demo accounts + labelled sample content | ✅ Built | Full seed workspace loads without sign-in |
+
+### Submission Assets Status
+
+| Asset | Status |
+|---|---|
+| Public GitHub repository | ✅ Live |
+| Deployed HTTPS URL | ✅ `https://rootory-seven.vercel.app/` |
+| Seeded demo + sample content | ✅ Loads without login |
+| Clear README | ✅ This document |
+| Six-slide PPT | 🔲 Pending |
+| Three-minute prototype video | 🔲 Pending |
+| All links work without personal login | ✅ Verified |
+
+---
+
+## ✨ What Rootory Delivers — Complete Feature List
 
 ### 🏠 Overview Dashboard
 
-The homepage gives every grower an instant snapshot of their growing world:
-
-- **Live stats panel** — plants in care, care moments logged, upcoming reminders count
-- **Today's care list** — reminders due today with one-click completion; completing auto-adds a "Care task" entry to the plant's timeline
-- **Growing-in-your-space preview** — the two most recent plants, with quick links to their timelines
-- **Community preview** — the latest community post surfaced inline
-- **Live weather card** — real-time temperature, humidity, wind speed, and rain probability
-- **Plant Check shortcut** — prominent prompt to start an AI-assisted observation from the home screen
-- **Offline indicator** — appears automatically when the device loses network; device-local editing continues
+- **Live stats** — plants in care, care moments logged, upcoming reminders
+- **Today's care list** — reminders due today with one-click completion; completing auto-adds a "Care task" to the plant timeline
+- **Plant preview** — two most recent plants with quick links
+- **Community preview** — latest community post surfaced inline
+- **Live weather** — real-time temperature, humidity, wind speed, rain probability (Open-Meteo)
+- **Plant Check shortcut** — home-screen prompt to start an AI observation
+- **Offline banner** — appears automatically when network is lost; local editing continues
 
 ---
 
 ### 🌿 My Plants — Full Plant Management
 
-Each plant is a complete, private growing record.
-
-**Plant Profile:**
+**Plant profile fields:**
 - Plant name, crop/species, category (Vegetable / Herb / Other)
-- Planting date → auto-computes current "Day N" age
-- Growing setting: Pot, Grow bag, Raised bed, Garden bed, Field, or Greenhouse
-- Quantity (e.g. "3 plants" or "0.5 acre"), growing location, soil type (optional)
-- Growth stage: Growing or Harvested
-- Optional cover photo (Supabase Storage for account users; base64 for demo)
+- Planting date → auto-computes "Day N" age
+- Growing setting: Pot, Grow bag, Raised bed, Garden bed, Field, Greenhouse
+- Quantity, growing location (free text), optional soil type
+- Growth stage: Growing / Harvested
+- Optional cover photo (Supabase Storage for accounts; base64 for demo)
 
-**Plant List View:**
-- Filter by category (All / Vegetables / Herbs / Other)
-- Search by plant name or crop
-- Cards show: photo, category, location, day-count badge, growth stage
+**Timeline entry types:** Progress · Watering · Fertilizer · Treatment · Observation · Harvest · Care task
 
-**Plant Detail View:**
-- Hero section with full photo, crop/category labels, all metadata chips, and action buttons
-- **Log Progress** → opens progress form linked to this plant
-- **Plant Check** → opens AI assessment pre-linked to this plant
-- **Edit** → updates all plant details in-place
+**On each timeline entry:**
+- Date label (Today / Yesterday / "3 Sep")
+- Optional photo
+- AI entries rendered as structured cards: Visible Symptoms, Possible Causes, Uncertainty, Inspect Next, Consult Expert
+- "Share with community" → pre-populates a post with the entry's text and photo
 
-**Growing Timeline (chronological diary):**
-- Entry types: Progress, Watering, Fertilizer, Treatment, Observation, Harvest, Care task completions
-- Each entry: type icon, date label ("Today" / "Yesterday" / "3 Sep"), note, optional photo
-- **AI observation entries** rendered as structured cards: Visible Symptoms, Possible Causes, Uncertainty, What to Inspect Next, When to Consult an Expert
-- **Share with community** button on any entry — pre-populates a community post with the entry's text and photo
-- Delete individual entries
-- "Whole-plant photo" context entries (from Plant Check) stored separately, clearly labelled
-
-**Per-plant care reminders** in an "Up next" panel; add directly from the plant view.
-
-**IoT Sensor Panel** — see *Simulated Soil Moisture Sensor* below.
-
-**Delete Plant** — removes the plant, all timeline entries, all reminders, and all notifications in one step.
+**Plant detail sidebar:**
+- Per-plant reminders ("Up next")
+- Soil moisture IoT panel (see below)
+- Delete plant — removes plant, all entries, all reminders, all notifications
 
 ---
 
 ### 👥 Community — The Growing Circle
 
-A real-time shared community board for signed-in growers; local-only demo for guests.
+**3 post types** exactly as specified: Progress update · Question · Harvest story
 
-**Posting:**
-- Body text (up to 1,500 chars), crop tag, post type (Progress update / Question / Harvest story), location name, optional photo
-- Photos upload to Supabase Storage (`community-images` bucket)
+**Engagement:** Like/unlike (live count) · Comments (persisted to Supabase) · Save/unsave posts · Report post
 
-**Feed:**
-- Filter tabs: Latest · Progress · Questions · Harvests · Saved
-- Full-text search: crop, body text, author name
-- Quick-filter crop tags: Tomato, Basil, Lettuce, Mixed
+**Feed filters:** Latest · Progress · Questions · Harvests · Saved · Crop tags (Tomato / Basil / Lettuce / Mixed)
 
-**Engagement:**
-- ❤️ Like / unlike with live count
-- 💬 Comments — view and add inline; persist to Supabase for account users
-- 🔖 Save / unsave posts (visible under "Saved" filter)
-- ⋯ Options: delete your own post, or report a post
+**Full-text search** across crop, body, and author name
 
-**Admin content moderation:** Remove posts or disable marketplace listings from the Crop Safety panel.
+**Transparency note shown on every community post:** "Posts and photos you share are visible to other signed-in growers. Community experiences are not verified agronomic advice."
 
 ---
 
 ### 🛒 Marketplace — From One Grower to Another
 
-A local, no-payment produce and supplies exchange.
+**Two categories exactly as specified:** Produce · Growing supplies
 
-**Creating a listing:**
-- Title, category (Produce / Growing supplies), price in ₹, unit, quantity, location, delivery method, description, seller name, optional photo
-- Shared publicly to all signed-in growers; local demo for guests
+**Listing fields:** Title, category, price (₹), unit, quantity, location, delivery method, description, seller name, photo
 
-**Browsing:**
-- Filter tabs: Explore all · Produce · Growing supplies · Saved · My listings · Enquiries
-- Text search + location filter dropdown
+**Listing management:** Edit, toggle Available/Unavailable from the listing detail modal
 
-**Listing detail:**
-- Full description, availability, collection method, seller info
-- Your own listings: Edit or toggle Available / Unavailable
-- Others: "Send an enquiry" button (disabled if unavailable)
+**Enquiry flow:**
+- Buyer clicks "Send an enquiry" on any available listing
+- Free-text message stored in Supabase
+- Routed to seller server-side by `route_enquiry()` Postgres trigger — buyer never sees seller's user ID or contact
+- "Enquiries" tab shows sent/received with direction labels
 
-**Enquiries (Buyer → Seller messaging):**
-- Free-text enquiry for any available listing
-- Stored in Supabase; routed to the seller via the `route_enquiry()` Postgres trigger — buyer never sees seller's user ID
-- "Enquiries" tab shows sent and received enquiries with direction labels
-- Saved listing preferences sync to Supabase (`saved_listings` table) for account users
+**Saved listings** sync to Supabase for account users (`saved_listings` table)
 
 ---
 
-### 🔔 Notifications — Alerts That Matter
+### 🔔 Notifications & Crop Safety Alerts
 
-**Notification types:**
-- 🌿 **Care** — plant reminders, task completions
-- ☁️ **Weather** — weather-related growing updates
-- 👥 **Community** — geofenced crop disease alerts reviewed by admins
+**Three notification categories** exactly as specified:
 
-**Notification management:**
-- Filter: All / Unread / Care / Weather / Community
-- "Mark all read", per-notification read/unread toggle
-- Plant notifications link directly to the plant ("View plant →")
-- Unread count badge on nav and mobile nav
+| Category | Trigger | Example |
+|---|---|---|
+| **Care** | User-set task | "Check soil moisture in the terrace garden" |
+| **Weather** | Forecast-based | "Rain is forecast near your saved location" |
+| **Community** | Reviewed crop report | "A nearby grower reported similar tomato symptoms" |
 
----
+**Geofenced crop alert pipeline:**
+1. Grower sets private alert area (coordinates rounded to 1 km precision, locality name only shown publicly)
+2. Grower submits a crop report → goes to admin moderation queue
+3. Admin reviews and Approves or Rejects
+4. Approval triggers `review_crop_report()` Postgres RPC: finds all growers within **10 km** growing the same crop who registered an alert area, and creates in-app notifications for them — **reports older than 7 days are excluded**
+5. Notified growers see the alert in their Notifications view
 
-### 🚨 Crop Safety — Geofenced Disease Alert Network
-
-One of Rootory's most distinctive features — a **community early-warning system** for crop diseases.
-
-1. **Set your private alert area** — enter coordinates (or use GPS) and a locality name. Coordinates rounded to ~1 km precision; never shown publicly.
-2. **Submit a crop report** — describe observed symptoms on a specific crop. Goes to a moderation queue; no alert is sent until an admin approves.
-3. **Admin review queue** — admins see all pending reports and Approve or Reject. Approval runs `review_crop_report()` Postgres RPC: identifies all growers within **10 km** growing the same crop and creates in-app alerts for them. Reports older than **7 days** are automatically excluded.
-4. **Nearby alerts** — growers see alerts with crop name, area, and description. Each can be marked read.
-5. **Content moderation** — admins can also remove community posts or disable marketplace listings.
+**Admin panel** (signed-in admins only):
+- Review queue of all pending crop reports
+- Approve (notify nearby growers) or Reject
+- Content moderation: remove community posts, mark listings unavailable
+- Admin access enforced server-side via `admin_members` table + `is_rootory_admin()` RPC
 
 ---
 
-### 🤖 Plant Check — AI-Assisted Observation (Gemini)
+### 🤖 Plant Check — AI-Assisted Symptom Assessment
 
-Powered by **Google Gemini** (`gemini-3.6-flash`). Deliberately conservative by design.
+Powered by **Google Gemini** (`gemini-3.6-flash`). Conservative and transparent by design.
 
 **Workflow:**
-1. Select a plant (or type any crop name)
-2. Upload a **close-up photo** of the affected area (the only image sent to AI)
-3. Optionally add a **whole-plant context photo** (stored locally, never sent to Gemini)
-4. Describe what you observed (up to 1,000 chars)
-5. Server: validates session → checks hourly quota → resizes image with Sharp → sends crop, note, and close-up image to Gemini
+1. Select plant (or type any crop name)
+2. Upload **close-up photo** of the affected area (only image sent to AI)
+3. Optionally add a whole-plant context photo (stored locally, **never sent to Gemini**)
+4. Describe observations in free text (up to 1,000 chars)
+5. Server: validates session → checks hourly quota → resizes image with Sharp → sends to Gemini
 
-**Structured AI response (Zod-validated):**
-- **Visible symptoms** — observable signs (up to 8 bullets)
-- **Possible causes** — plausible explanations, never a confirmed diagnosis (up to 5)
-- **Uncertainty** — what the model cannot determine
-- **What to inspect next** — practical, low-risk steps
-- **When to consult an expert** — guidance toward KVK / agronomist / horticulturist
+**Structured output (Zod-validated):**
 
-**Safety guardrails (system prompt):**
-- All user input treated as untrusted observations, not instructions (prompt injection defence)
-- Never confirms a diagnosis; never recommends pesticides, dosages, or chemical recipes
+| Field | Description |
+|---|---|
+| `visibleSymptoms` | What is visible in the image (up to 8 bullets) |
+| `possibleCauses` | Plausible causes, explicitly marked uncertain (up to 5) |
+| `uncertainty` | What the model cannot determine |
+| `inspectNext` | What to inspect next — low-risk, practical steps (up to 8) |
+| `consultExpert` | When and where to seek expert help (KVK / agronomist / horticulturist) |
+| `usableImage` | `false` if the image is blurry, not a plant, or unusable |
+
+**What the AI never does** (enforced in system prompt):
+- Never confirms a diagnosis
+- Never provides pesticide names, dosages, or chemical recipes
+- Never invents soil chemistry from photos
 - Never claims access to historical or real-time data
-- If the image is unusable or not a plant: says so and sets `usableImage: false`
-- Max output tokens: 2,500
+- Blurry / unusable image → `usableImage: false` + request for a better photo
 
-**Rate limiting:**
-- 10 assessments/account/hour (server-side via `claim_plant_assessment()` RPC; returns HTTP 429)
-- Demo account: 500/hour
+**Rate limiting:** 10 assessments/account/hour via server-side `claim_plant_assessment()` RPC (HTTP 429 when exhausted)
 
-**Output:** Saved to the plant's timeline as a structured "Observation" entry, rendered by `ObservationNote` component with clearly labelled sections.
+**After assessment:** Saved to the plant timeline as a structured "Observation" entry, displayed via `ObservationNote` with clearly labelled sections.
 
 ---
 
-### 🌦️ Live Weather (Open-Meteo)
+### 🌦️ Live Weather
 
-Real-time weather, no API key required:
-
-- Current temperature (°C), humidity (%), wind speed (km/h), rain probability (current hour)
-- Choose: **Pune, Mumbai, Nashik, Bengaluru, Delhi** or GPS ("Use my location")
-- GPS coordinates rounded to 2 decimal places before the API call; never stored or shared
-- Server-side 5-minute cache (`revalidate: 600`)
-- Clear disclaimer: weather alone does not diagnose plant health
+Real-time via **Open-Meteo** (free, no vendor lock-in):
+- Temperature (°C), humidity (%), wind speed (km/h), rain probability (current hour)
+- **Source and last-updated time shown** — exactly as required
+- Cities: Pune, Mumbai, Nashik, Bengaluru, Delhi + GPS ("Use my location")
+- GPS coordinates rounded to 2 decimal places; never stored or shown to others
+- **If weather fails, the rest of the dashboard keeps working** — weather is isolated in its own component
 
 ---
 
 ### 📡 IoT — Simulated Soil Moisture Sensor
 
-A real, end-to-end hardware integration pipeline:
+A complete, working hardware integration path:
 
-**Hardware simulation:**
 - **ESP32 + potentiometer** simulated in **Wokwi** (online circuit simulator)
-- Potentiometer ADC value (0–100 integer) sent over **HTTPS** with TLS validation using the Google Trust Services root CA (`gtsr1.pem`) — no `insecure` flag used
-- Wokwi connects to the live production API at `https://rootory-seven.vercel.app/api/iot/moisture`
-
-**API (`/api/iot/moisture`):**
-- Validates a **device key** (64-char hex Bearer token)
-- Calls Supabase RPC `ingest_sensor_reading()` which:
-  - Matches device key to plant and owner
-  - Enforces a **5-second throttle** between readings (HTTP 429 if violated)
-  - Stores reading in `simulated_telemetry`
-  - Auto-prunes via Postgres trigger (keeps rolling history)
-
-**In-app sensor panel (per-plant detail view):**
-- Refreshes every 5 seconds while visible (pauses on hidden tab)
-- Shows latest reading in large text with a band label: **Low** (<30) / **Moderate** / **High** (>80)
-- Shows seconds since last reading; warns "Stale" if >2 minutes
-- Lists the 10 most recent readings with timestamps
-- **Device management:** Create a key (24hr validity), copy it, revoke it — all from the browser
-- **Browser simulation slider** — drag 0–100 and click "Send simulated reading" to fire the real API without any hardware
-
-> The browser slider path is identical to the Wokwi path — the full IoT pipeline can be demonstrated live in any browser.
+- Sends an integer moisture reading (0–100) over **HTTPS** with TLS (Google Trust Services root CA)
+- Next.js API validates a **device key** (64-char hex Bearer token): write-only, plant-scoped, 24-hour expiry, revocable
+- Supabase RPC `ingest_sensor_reading()` enforces 5-second throttle, stores reading, auto-prunes
+- In-app panel refreshes every 5 seconds; shows latest reading, band label (Low / Moderate / High), timestamps
+- **Browser simulation slider** — the full IoT pipeline works in any browser without hardware
 
 ---
 
-### 👤 Profile & Settings
+### ☁️ Cloud Account, Backup & Account Deletion
 
-- Edit name, location, role, bio
-- Notification preference toggles (Care, Weather, Community, Marketplace interest)
-- Connection status panel: device storage state, cloud backup, AI availability, weather service
-- **Export my records** — downloads a complete JSON snapshot (`rootory-my-records.json`)
-- **Install Rootory** — triggers PWA install prompt; falls back to iOS Safari instructions (Share → Add to Home Screen)
-- **Reset demo workspace** — restores seed data (disabled for account users)
+**Auth:** Email + password · Email OTP (magic link) · Password recovery at `/auth/confirm`
 
----
+**Auto-sync:** Private garden with **revision-checked conflict detection** · Community posts · Marketplace listings · Enquiries · Saved listings — all through a 700ms debounced serial queue
 
-### ☁️ Cloud Account & Backup
+**Visible sync status** in the page footer: "Saving…" / "Saved to your account" / "Sync needs attention"
 
-**Authentication:**
-- Email + password
-- Email code sign-in (OTP magic link via `{{ .Token }}` in Supabase template)
-- Password recovery via email OTP, handled at `/auth/confirm`
-
-**Automatic cloud sync (signed in):**
-- Private garden backs up with **revision-checked conflict detection** — stale revisions fail gracefully rather than silently overwriting
-- Community posts, marketplace listings, enquiries, and saved listing preferences sync to shared Supabase tables
-- 700ms debounced serial queue — edits never race each other
-
-**Manual cloud restore:** Restores the latest cloud backup to the current device.
-
-**Delete account (two-step confirmation):**
-- Calls `delete_own_account()` RPC: deletes all rows in all tables and all objects from `plant-images` and `community-images` Storage buckets
-- Complete, irreversible, no orphan data
+**Account deletion (two-step):** Calls `delete_own_account()` RPC → deletes all rows across all tables + all Storage objects → signs out. Complete, irreversible, no orphan data.
 
 ---
 
-### 🔍 Global Search
+### 🔍 Global Search & PWA
 
-- Accessible from the top bar on any page
-- Searches plants (name + crop), marketplace listings (title), and community posts (body + author) simultaneously
-- Results grouped by section with contextual icons; one click navigates directly to the item
+**Global search:** Searches plants, marketplace listings, and community posts simultaneously from any page.
 
----
-
-### 📱 PWA — Progressive Web App
-
-- **Service worker** (`/sw.js`) caches the app shell for offline access; `/auth/confirm` excluded from cache to prevent stale token replay
-- **Web manifest** with full icon set: 180×180 for iOS, standard sizes for Android/Chrome
-- **iOS Safari**: `apple-touch-icon.png` + `apple-touch-icon-precomposed.png` (180×180, opaque `#183e32` brand green) — correct icon on iPhone home screen
-- Meta tags: `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style: black-translucent`, `apple-mobile-web-app-title: rootory`
-- Offline banner shown automatically; all local editing continues
-
----
-
-### 💎 Rootory Plus (Concept Preview)
-
-Subscription concept to validate grower interest — no payment connected:
-- Multiple plots and team access
-- Group crop-health overview
-- Advanced records and reporting
-- Shared workflows for grower groups
-
-Growers can click "I'm interested" (saved on-device only). This is a post-hackathon direction.
+**PWA:**
+- Service worker caches app shell; `/auth/confirm` excluded to prevent stale tokens
+- Web manifest with 180×180 iOS icon + standard Android/Chrome sizes
+- `apple-touch-icon.png` for correct iPhone home-screen icon
+- Works installable on Chrome, Edge, Safari (iOS: Share → Add to Home Screen)
 
 ---
 
@@ -314,19 +313,19 @@ Growers can click "I'm interested" (saved on-device only). This is a post-hackat
 │  │  Single-page app · hash-based navigation             │   │
 │  │  State: IndexedDB (idb) + Supabase cloud sync        │   │
 │  └──────────────────────────────────────────────────────┘   │
-│  crop-safety (alerts) · sensor-panel (IoT) · cloud-account  │
+│  crop-safety · sensor-panel · cloud-account · live-weather  │
 │  workflows: PlantForm · LogForm · ReminderForm · PostForm   │
 │             ListingForm · EnquiryForm · PlantCheck (AI)     │
-└──────────────────┬───────────────────────────┬─────────────┘
-                   │                           │
-         ┌─────────┘                 ┌─────────┘
-         ▼                           ▼
-┌────────────────────┐    ┌────────────────────┐
-│  Next.js API       │    │  Supabase           │
-│  /api/plant-health │    │  PostgreSQL + RLS   │
-│  /api/weather      │    │  Storage buckets    │
-│  /api/iot/moisture │    │  Auth               │
-└────────┬───────────┘    └────────────────────┘
+└───────────────┬─────────────────────────┬───────────────────┘
+                │                         │
+      ┌─────────┘               ┌─────────┘
+      ▼                         ▼
+┌────────────────────┐  ┌──────────────────────┐
+│  Next.js API       │  │  Supabase             │
+│  /api/plant-health │  │  PostgreSQL + RLS     │
+│  /api/weather      │  │  Storage buckets      │
+│  /api/iot/moisture │  │  Auth                 │
+└────────┬───────────┘  └──────────────────────┘
          │
     ┌────┴──────────────┐
     ▼                   ▼
@@ -338,17 +337,16 @@ Growers can click "I'm interested" (saved on-device only). This is a post-hackat
 ┌──────────────────┐
 │  Wokwi / ESP32   │
 │  Potentiometer   │
-│  simulation      │
 └──────────────────┘
 ```
 
-**Data flow (on every user edit):**
+**Data persistence flow:**
 ```
-update(fn) → React state → 700ms debounce →
-  IndexedDB (saveState) →
-  Supabase (backupGarden, revision-checked RPC) →
-  syncCommunity (posts diff) →
-  syncMarketplace (listings + saved_listings diff)
+User action → React state → 700ms debounce →
+  IndexedDB (always) →
+  Supabase backupGarden (revision-checked) →
+  syncCommunity (post diff) →
+  syncMarketplace (listing + saved_listings diff)
 ```
 
 ---
@@ -357,36 +355,37 @@ update(fn) → React state → 700ms debounce →
 
 | Layer | Technology | Why |
 |---|---|---|
-| **Framework** | Next.js (App Router) | Server components, API routes, Vercel edge deployment |
-| **Language** | TypeScript | Full type safety across client and server |
-| **Database & Auth** | Supabase (PostgreSQL + RLS + Storage) | Row-level security, real-time, auth — all in one platform |
-| **AI** | Google Gemini `gemini-3.6-flash` | Multimodal (image + text), structured JSON output |
-| **Image processing** | Sharp | Server-side JPEG resize, EXIF rotation, size limit enforcement |
-| **Local storage** | idb (IndexedDB) | Account-scoped, structured persistence |
-| **Schema validation** | Zod | Shared input/output schemas across all API boundaries |
-| **UI primitives** | Radix UI (Dialog) | Accessible modal primitives |
-| **Icons** | Lucide React | Lightweight, consistent SVG set |
-| **Weather** | Open-Meteo | Free, no API key, high quality |
-| **IoT simulation** | Wokwi (ESP32) | Professional hardware simulation without physical device |
-| **Deployment** | Vercel | Zero-config Next.js, automatic SSL |
+| **Framework** | Next.js (App Router) + TypeScript | Server components, API routes, single codebase for web + PWA |
+| **Database & Auth** | Supabase (PostgreSQL + RLS + Storage) | Row-level security, auth, real-time, storage — one platform |
+| **AI** | Google Gemini `gemini-3.6-flash` | Multimodal, structured JSON output via `responseJsonSchema` |
+| **Image processing** | Sharp | Server-side resize, EXIF rotation, size enforcement before AI |
+| **Local storage** | idb (IndexedDB) | Account-scoped structured persistence; works offline |
+| **Schema validation** | Zod | Shared input/output contracts across all API boundaries |
+| **UI primitives** | Radix UI (Dialog) | Accessible modal system |
+| **Icons** | Lucide React | Consistent, lightweight SVG set |
+| **Weather** | Open-Meteo | Free, no API key, high quality forecast data |
+| **IoT simulation** | Wokwi (ESP32) | Professional hardware simulation without physical components |
+| **Deployment** | Vercel | Zero-config Next.js, automatic SSL, GitHub integration |
 | **Testing** | Vitest + Playwright | 16 tests across 4 suites |
-| **CSS** | Custom design tokens | Hand-crafted, accessible — no Tailwind or shadcn |
+| **CSS** | Custom design tokens | Hand-crafted, mobile-first, accessible |
+
+> Note: The problem statement suggested Tailwind CSS + shadcn/ui. Rootory uses custom CSS design tokens instead — delivering the same mobile-first, accessible result without a framework dependency.
 
 ---
 
-## 🗄️ Database Schema (7 Migrations)
+## 🗄️ Database (7 Migrations)
 
 | Migration | What it adds |
 |---|---|
-| `001` | `private_gardens` (JSONB blob), `plant-images` Storage bucket, revision-checked save RPC |
+| `001` | `private_gardens` (JSONB), `plant-images` bucket, revision-checked save RPC |
 | `002` | `account_gardens`, `assessment_usage`, `claim_plant_assessment()` quota RPC |
-| `003` | `posts`, `comments`, `likes`, `bookmarks`, `community-images` bucket, `community_author` trigger |
-| `004` | `marketplace_listings`, `enquiries`, `route_enquiry()` Postgres trigger |
-| `005` | `grower_locations`, `crop_reports`, `alerts`, `review_crop_report()`, `admin_members`, `moderate_content()`, `is_rootory_admin()` |
-| `006` | `simulated_devices`, `simulated_telemetry`, device lifecycle RPCs, 5s throttle, auto-prune trigger |
+| `003` | `posts`, `comments`, `likes`, `bookmarks`, `community-images` bucket |
+| `004` | `marketplace_listings`, `enquiries`, `route_enquiry()` trigger |
+| `005` | `grower_locations`, `crop_reports`, `alerts`, `review_crop_report()`, `admin_members`, `moderate_content()` |
+| `006` | `simulated_devices`, `simulated_telemetry`, device lifecycle RPCs, throttle, auto-prune |
 | `007` | `saved_listings` (cloud bookmark sync), `delete_own_account()` full-wipe RPC |
 
-All tables use **Row-Level Security** — users can only access their own rows. Admin access requires a direct SQL insert; no app code can self-elevate.
+All tables use **Row-Level Security**. Admin access requires a direct SQL insert into `admin_members` — no app code can self-elevate.
 
 ---
 
@@ -395,7 +394,7 @@ All tables use **Row-Level Security** — users can only access their own rows. 
 ### Prerequisites
 
 - Node.js 22.x
-- Supabase project (free tier)
+- Supabase project (free tier works)
 - Google Gemini API key
 
 ### Steps
@@ -415,33 +414,30 @@ cp .env.example .env.local
 # NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJ...
 # GEMINI_API_KEY=AIza...
 
-# 4. Apply all 7 migrations in order via Supabase SQL Editor
-#    supabase/migrations/202609120001_private_gardens.sql
-#    supabase/migrations/202609120002_account_gardens.sql
-#    supabase/migrations/202609120003_community.sql
-#    supabase/migrations/202609120004_marketplace.sql
-#    supabase/migrations/202609120005_crop_safety.sql
-#    supabase/migrations/202609130006_simulated_sensors.sql
-#    supabase/migrations/202609130007_account_lifecycle_and_saved_listings.sql
+# 4. Apply all 7 migrations (Supabase SQL Editor, in filename order)
 
 # 5. Start dev server
 npm run dev
-# Open http://localhost:3000
+# → http://localhost:3000
 ```
 
-### Supabase Auth configuration
+### Supabase Auth Configuration
 
 1. Enable **Email/Password** authentication
 2. In email templates, include `{{ .Token }}` alongside `{{ .ConfirmationURL }}`
 3. **Site URL** → `https://rootory-seven.vercel.app`
 4. **Redirect URL** → `https://rootory-seven.vercel.app/auth/confirm`
 
-### Admin provisioning
+### Admin Provisioning
 
 ```sql
--- In Supabase SQL Editor:
+-- Supabase SQL Editor:
 INSERT INTO public.admin_members (user_id) VALUES ('<admin-user-uuid>');
 ```
+
+### Demo Account
+
+The app loads a fully seeded demo workspace without any login. To test account features, sign up with any email/password at the live URL.
 
 ---
 
@@ -453,57 +449,73 @@ npm run typecheck # 0 TypeScript errors ✅
 npm run build     # Clean production build ✅
 ```
 
-Tests cover: data utilities (age, date labels, seed shape), cloud schema isolation, IndexedDB storage scoping, and AI assessment schema validation.
+Test coverage: data utilities · cloud schema isolation · IndexedDB scoping · AI assessment schema validation
 
 ---
 
 ## 🔐 Security & Privacy
 
-| Concern | How Rootory handles it |
+| Concern | Implementation |
 |---|---|
-| **Garden data** | Private by default; RLS enforces user-scoped access at the database level |
-| **Community sharing** | Explicitly disclosed before posting; opt-in only |
-| **AI prompt injection** | System prompt treats all user input as untrusted observations, never instructions |
-| **Location precision** | Rounded to ~1 km before storage; locality names only shown to other growers |
-| **IoT device keys** | 64-char hex, write-only, plant-scoped, 24hr expiry, revocable |
-| **Image size** | 3.1 MB hard limit enforced in the API route before Sharp or Gemini |
-| **Admin access** | Requires direct SQL insert into `admin_members` — no browser code can self-elevate |
-| **Enquiry routing** | Buyer never sees seller's user ID; routed server-side by Postgres trigger |
-| **Account deletion** | Single RPC deletes all rows + all Storage objects; no orphan data |
-| **Auth cache** | `/auth/confirm` is excluded from the service worker cache |
+| Private plant records by default | RLS on `private_gardens`; explicit opt-in to share |
+| Community sharing disclosed | Warning shown before every post/share action |
+| AI prompt injection | System prompt treats all user input as untrusted observations |
+| Location precision | Coordinates rounded to ~1 km; locality names only shown publicly |
+| IoT device keys | 64-char hex, write-only, plant-scoped, 24hr expiry, revocable |
+| Upload validation | 3.1 MB hard limit; Sharp validates JPEG before Gemini |
+| Admin elevation | Requires SQL insert; no browser code can self-elevate |
+| Enquiry privacy | Buyer never sees seller's user ID; Postgres trigger handles routing |
+| Account deletion | `delete_own_account()` RPC wipes all rows + all Storage objects |
+| Auth callback security | `/auth/confirm` excluded from service worker cache |
 
 ---
 
-## 🌟 What Makes Rootory Special
+## 🌟 Why Rootory Wins
 
-### 1. Offline-First by Design
-Everything saves locally first, syncs when back online. For a grower in a low-connectivity area, this isn't a nice-to-have — it's essential.
+### 1. Offline-First for Real-World Growers
+Every action saves locally first, syncs when back online. A grower in a low-connectivity village loses nothing. The sync status is always visible.
 
-### 2. Responsible AI — Not Just a Chatbot
-The plant observation tool never diagnoses. It never recommends chemicals. It always points toward a real human expert for serious issues. This reflects what a responsible tool for Indian farmers *should* do.
+### 2. Responsible AI — Not a Chatbot
+The AI observation tool never diagnoses. It never recommends chemicals. It always points toward a real human expert. A blurry photo says so. This reflects what a responsible tool for Indian farmers *should* do.
 
-### 3. Geofenced Community Early Warning
-The crop disease alert system is unique in a free consumer app: a grower reports an observation, a human admin verifies it, and every nearby farmer growing the same crop receives a private in-app alert — no false positives without human review.
+### 3. Geofenced Community Early Warning — Human-Reviewed
+The crop disease alert system is the only feature of its kind in a free consumer app: a grower reports an observation, a human admin reviews it, and every nearby farmer growing the same crop gets a private in-app alert. **No false positives reach users without a human in the loop.**
 
-### 4. Real End-to-End IoT Integration
-The soil moisture pipeline — ESP32 simulation → HTTPS → Next.js API → Supabase → live browser refresh — is a fully working hardware integration. Swapping the Wokwi simulation for a real ESP32 with a capacitive moisture probe is a single hardware change.
+### 4. Real IoT Pipeline
+The soil moisture path — ESP32 simulation → HTTPS API → Supabase → live browser refresh — is a complete, working hardware integration. Swapping Wokwi for a real ESP32 is a single hardware change, not a software rewrite.
 
-### 5. Privacy Without Compromise
-Coordinates are rounded, never exact. Plant records are private. Sharing is always opt-in and explicitly disclosed. Account deletion is complete, immediate, and irreversible.
+### 5. Complete Enquiry Flow Without Payments
+The problem statement explicitly says "the primary action is Send enquiry." Rootory delivers a complete enquiry system with server-side routing, direction labels, and privacy — without requiring payment infrastructure.
 
-### 6. Zero-Friction Demo
-No sign-up needed to experience the full UI. The demo workspace loads instantly with sample plants, posts, listings, and notifications — stored locally, never sent anywhere.
+### 6. Privacy Without Compromise
+Coordinates are always rounded. Records are private by default. Every share is opt-in. Account deletion is complete and immediate.
 
 ---
 
-## 🗺️ Roadmap (Post-Hackathon)
+## ⚠️ Known Limitations
+
+These are disclosed transparently, as the problem statement recommends:
+
+- **Crop scope**: The AI assessment supports any crop but is most reliable for common vegetables and herbs. Unsupported or exotic plants receive a clearly flagged fallback.
+- **No real payments or delivery**: The marketplace is an enquiry-and-connect system; no payment processing or delivery is provided.
+- **No verified seller badges**: Seller verification requires a completed-order system not in scope for the prototype.
+- **Pagination**: Community posts and marketplace listings use a fixed query limit (100/200 rows) rather than infinite scroll — suitable for the prototype scale.
+- **IoT is simulated**: The sensor uses a Wokwi ESP32 simulation, not a physical probe. Values are an arbitrary 0–100 scale, not calibrated moisture percentages or watering advice.
+- **Language**: English only in the current build.
+- **Full multi-account alert verification**: The complete flow (User A reports → Admin approves → User B within 10 km receives alert) requires three real accounts and manual testing.
+- **Push notifications**: In-app alerts are implemented. Browser push (Web Push API) is deferred.
+
+---
+
+## 🗺️ Roadmap
 
 - [ ] Web Push notifications for geofenced crop alerts
-- [ ] Cursor-based infinite scroll (replace fixed query limits)
+- [ ] Cursor-based infinite scroll pagination
 - [ ] Custom SMTP for reliable email delivery (Resend / SendGrid)
 - [ ] Physical ESP32 + capacitive soil moisture probe calibration guide
 - [ ] Rootory Plus — multi-plot team accounts for nurseries and farmer groups
 - [ ] KVK (Krishi Vigyan Kendra) integration for verified agronomist connections
+- [ ] Language support (Marathi / Kannada)
 
 ---
 
