@@ -1,4 +1,5 @@
 "use client";
+import { GardenOverview } from "./garden-overview";
 import { SensorPanel } from "./sensor-panel";
 import { ObservationNote } from "./observation-note";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -768,6 +769,7 @@ export default function Rootory({owner = ""}: {owner?: string}) {
                   </p>
                 </article>
               </div>
+              <GardenOverview data={data} onPlants={()=>go("plants")} onCare={()=>go("plants")}/>
               <div className="dashboard-columns">
                 <div>
                   <div className="section-title">

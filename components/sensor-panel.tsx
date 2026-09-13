@@ -1,4 +1,5 @@
 "use client";
+import { Droplets, Radio } from 'lucide-react';
 import { useEffect,useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { moistureBand } from '@/lib/sensor';
@@ -22,13 +23,18 @@ export function SensorPanel({plantId,owner}:{plantId:string;owner:string}){
  },[plantId,owner]);
  async function run(fn:()=>Promise<void>){setBusy(true);setMessage('');try{await fn();}catch(e){setMessage(e instanceof Error?e.message:'Could not complete sensor action.');}finally{setBusy(false);}}
  const latest=rows[0],age=latest?Math.max(0,Math.floor((now-Date.parse(latest.recorded_at))/1000)):0;
+ const points=[...rows].reverse();
+ const firstTime=points.length?Date.parse(points[0].recorded_at):0;
+ const timeRange=points.length?Date.parse(points[points.length-1].recorded_at)-firstTime:0;
+ const xy=points.map((r,i)=>({x:timeRange?12+(Date.parse(r.recorded_at)-firstTime)/timeRange*256:140,y:90-r.moisture_percent*.72,r}));
+ const line=xy.map(p=>`${p.x},${p.y}`).join(' ');
  const expired=!device||Date.parse(device.expires_at)<=now;
- return <section className="panel margin-top" aria-label="Simulated soil sensor">
-  <h3>Soil moisture simulation</h3><p className="small muted">Simulated IoT sensor · not a physical soil measurement</p>
+ return <section className="panel margin-top sensor-card" aria-label="Simulated soil sensor">
+  <div className="sensor-heading"><span className="sensor-icon"><Droplets size={20}/></span><div><h3>Soil moisture</h3><span className="sensor-source">SIMULATED IOT SENSOR</span></div><Radio size={17} aria-hidden="true"/></div>
   {!owner?<p>Sign in and save a plant to connect a simulator.</p>:<>
    {error&&<p role="status">{error}</p>}
-   {latest?<><p style={{fontSize:38,fontWeight:700,margin:'12px 0'}}>{latest.moisture_percent}%</p><strong>{moistureBand(latest.moisture_percent)}</strong>
-    <p className="small">{age>120?'Stale reading — simulator may be stopped.':`Received ${age} seconds ago`}</p>
+   {latest?<><div className="sensor-reading"><div className="sensor-gauge" style={{background:`conic-gradient(${latest.moisture_percent<30?'#b28b42':'#658654'} ${latest.moisture_percent}%, #e7eddf 0)`}}><div><strong>{latest.moisture_percent}<small>%</small></strong><span>demo input</span></div></div><div><span className={`sensor-band ${latest.moisture_percent<30?'sensor-band-low':''}`}>{moistureBand(latest.moisture_percent)}</span><p className="sensor-freshness">{age>120?'Last reading is over 2 min old':`Updated ${age}s ago`}</p></div></div>
+    {xy.length>1&&<div className="sensor-trend"><div className="row between"><strong>Moisture trend</strong><span>Last {rows.length} readings</span></div><svg viewBox="0 0 280 108" role="img" aria-label={`Simulated moisture history, from ${points[0].moisture_percent} to ${latest.moisture_percent} percent`}><path d="M12 18H268 M12 54H268 M12 90H268" stroke="#dee6d7" strokeDasharray="3 4" fill="none"/><polygon points={`12,90 ${line} ${xy[xy.length-1].x},90`} fill="#dce8c9" opacity=".65"/><polyline points={line} stroke="#587644" strokeWidth="2.5" strokeLinejoin="round" fill="none"/>{xy.map(p=><circle key={p.r.id} cx={p.x} cy={p.y} r="3.5" fill="#fff" stroke="#587644" strokeWidth="1.5"><title>{new Date(p.r.recorded_at).toLocaleTimeString()}: {p.r.moisture_percent}% simulated</title></circle>)}</svg><div className="sensor-chart-times"><span>{new Date(points[0].recorded_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span><span>Latest</span></div></div>}
     <p className="small muted">Demo thresholds: below 30 low; above 80 high. This is a simulated input scale, not calibrated moisture or watering advice.</p>
     <details><summary>Recent readings ({rows.length})</summary><ul>{rows.map(r=><li key={r.id}>{new Date(r.recorded_at).toLocaleTimeString()} — {r.moisture_percent}%</li>)}</ul></details>
    </>:<p>No readings yet. Connect a simulator below.</p>}

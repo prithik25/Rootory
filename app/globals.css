@@ -3643,3 +3643,28 @@ h1 {
     font-size: 10px;
   }
 }
+
+/* Garden overview: Rootory's existing cream, sage and forest palette. */
+.garden-overview{display:grid;grid-template-columns:1fr 1.2fr 1.15fr;gap:28px;padding:26px;margin:18px 0 32px;border:1px solid #dfe6d5;border-radius:20px;background:linear-gradient(120deg,#f0f4e7,#fbfcf7);align-items:center}
+.garden-overview-title .eyebrow{font-size:9px;letter-spacing:1.6px;color:#697f53;font-weight:700}
+.garden-overview-title h2{font-size:19px;line-height:1.35;margin:8px 0}
+.garden-overview-title p,.garden-mix p{font-size:12px;line-height:1.6;color:#66745e;margin:0}
+.garden-mix h3{display:flex;align-items:center;gap:8px;font-size:13px;margin:0}
+.garden-mix-bar{display:flex;height:10px;gap:3px;overflow:hidden;border-radius:8px;margin:16px 0}
+.garden-mix-legend{display:flex;gap:10px 16px;flex-wrap:wrap}
+.garden-mix-legend>span{display:flex;align-items:center;gap:6px;font-size:11px;color:#59694f}
+.garden-mix-legend i{width:7px;height:7px;border-radius:50%}
+.garden-mix-legend strong{color:#284834}
+.care-progress{border:0;border-left:1px solid #dbe3d0;padding:10px 0 10px 24px;background:none;text-align:left;display:flex;align-items:center;gap:16px;color:var(--ink)}
+.care-ring{flex-shrink:0;width:70px;height:70px;padding:7px;border-radius:50%}
+.care-ring>span{display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#f8faf2;font-size:16px;font-weight:700}
+.care-progress strong{font-size:13px;display:block}.care-progress small{font-size:11px;display:block;margin:6px 0;color:#66745e;line-height:1.5}
+.care-link{display:flex;align-items:center;gap:5px;font-size:11px;color:#50713f}
+.sensor-card{background:linear-gradient(150deg,#f4f7ed 0%,#fff 75%);border-color:#dce5d2;overflow:hidden}
+.sensor-heading{display:flex;gap:10px;align-items:center}.sensor-heading>svg:last-child{margin-left:auto;color:#81966b}.sensor-heading h3{margin:0;font-size:15px}.sensor-icon{display:flex;padding:10px;border-radius:12px;background:#e5edd7;color:#5b7d43}.sensor-source{font-size:8px;letter-spacing:1.2px;font-weight:700;color:#647a50;display:block;margin-top:5px}
+.sensor-reading{display:flex;align-items:center;gap:16px;margin:24px 0 18px;flex-wrap:wrap}.sensor-gauge{width:112px;height:112px;padding:9px;border-radius:50%;flex-shrink:0}.sensor-gauge>div{background:#f8faf4;border-radius:50%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center}.sensor-gauge strong{font-family:Manrope,sans-serif;font-size:32px;line-height:1.2;letter-spacing:-1.5px}.sensor-gauge small{font-size:15px;letter-spacing:0;margin-left:2px}.sensor-gauge span{font-size:10px;color:#69785d;margin-top:3px}.sensor-band{display:inline-block;background:#e7eedc;color:#456236;border-radius:6px;padding:6px 8px;font-size:10px;font-weight:700}.sensor-band-low{background:#f6ecd7;color:#82602e}.sensor-freshness{font-size:10px;color:#69785d;max-width:110px;line-height:1.5;margin:8px 0 0}
+.sensor-trend{margin:18px 0;padding:16px 0 12px;border-top:1px solid #e1e8d9;border-bottom:1px solid #e1e8d9}.sensor-trend .row strong{font-size:12px}.sensor-trend .row>span{font-size:9px;color:#728065}.sensor-trend svg{display:block;width:100%;height:auto;margin-top:10px}.sensor-chart-times{display:flex;justify-content:space-between;color:#75836b;font-size:9px}.sensor-card details{font-size:12px;margin-top:12px}.sensor-card details ul{padding-left:18px;line-height:1.9}.sensor-card>.small{font-size:10px;line-height:1.6}.sensor-card .button.secondary{width:100%;justify-content:center;font-size:12px}.sensor-card .form{border-top:1px solid #e1e8d9;padding-top:18px}.sensor-card .form input{max-width:100%;min-width:0}
+.plant-detail-hero{background:linear-gradient(110deg,#fff 40%,#f0f4e7);box-shadow:0 7px 28px #294b3305}.detail-chips span{background:#f6f8ef;color:#566c44;border-color:#dfe7d4;border-radius:20px}.stat-card{box-shadow:0 4px 20px #294b3304;border-color:#e0e7d8}.stats-grid .stat-card>div{color:#617154}.stats-grid .stat-card p{color:#68765d}.stat-icon{border:1px solid #e2e9d7}.section-title h2{letter-spacing:-.5px}
+@media(min-width:1200px){.detail-grid{grid-template-columns:minmax(0,1fr) 340px;gap:28px}.hero-card.photographic{min-height:270px}.hero-copy{padding-top:30px;padding-bottom:30px}}
+@media(max-width:1100px){.garden-overview{grid-template-columns:1fr 1fr;gap:20px}.garden-overview-title{grid-column:1/-1}.garden-overview-title h2{margin-bottom:4px}}
+@media(max-width:600px){.garden-overview{grid-template-columns:1fr;gap:20px;padding:20px;margin-bottom:24px}.garden-overview-title{grid-column:auto}.care-progress{border-left:0;border-top:1px solid #dbe3d0;padding:20px 0 0}.sensor-reading{flex-wrap:nowrap;gap:20px}.sensor-gauge{width:106px;height:106px}.sensor-heading h3{font-size:16px}}
