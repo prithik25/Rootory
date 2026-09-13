@@ -6,6 +6,8 @@ This is an ESP32 + potentiometer simulation, not physical hardware or calibrated
 
 Migration `202609130006_simulated_sensors.sql` is required (applied to the connected project). Open https://rootory-seven.vercel.app, sign in, open a plant, and find **Soil moisture simulation**. Select **Connect / simulate sensor → Create device key**. The key is plant-scoped, write-only, revocable, valid for 24 hours, and only displayed in the current browser session. Do not put it in public code or the recording. At most ten devices per account; replacing a key keeps the same device ID and invalidates the old key.
 
+Saved project: https://wokwi.com/projects/475004097624927233 (source contains no device credential).
+
 ## Wokwi setup
 
 1. Open https://wokwi.com/projects/new/esp32.
@@ -43,6 +45,6 @@ The plant and owner are resolved from the device credential; do not send userId 
 
 ## Verification boundary
 
-Build +16 tests pass. Live database valid write, bad/null key denial, throttling, private history, hidden hashes and revocation were checked. The supplied Wokwi sketch requires compilation/run verification in Wokwi; do not claim that test has passed until it actually runs.
+Build +16 tests pass. Live database valid write, bad/null key denial, throttling, private history, hidden hashes and revocation were checked. The saved Wokwi sketch compiled and started successfully. Browser simulation -> production API -> visible 0% reading passed. ESP32 HTTPS telemetry is waiting for runtime credential entry and is not yet claimed verified.
 
 Official references: https://docs.wokwi.com/guides/esp32-wifi and https://docs.wokwi.com/parts/wokwi-potentiometer. Root certificate source: https://pki.goog/repo/certs/gtsr1.pem.
