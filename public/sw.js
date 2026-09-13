@@ -1,5 +1,5 @@
 /* Device-local frontend only. Never cache API calls or cross-origin data. */
-const CACHE = "rootory-shell-v3";
+const CACHE = "rootory-shell-v4";
 const CORE = [
   "/",
   "/icon.svg",
@@ -10,6 +10,9 @@ const CORE = [
   "/assets/basil.webp",
   "/assets/leafy-lettuce.webp",
   "/assets/produce-basket.webp",
+  "/assets/chilli.webp",
+  "/assets/neem-cake.webp",
+  "/assets/microgreens.webp",
 ];
 self.addEventListener("install", (event) => {
   event.waitUntil(
