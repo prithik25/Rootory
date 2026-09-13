@@ -45,6 +45,6 @@ The plant and owner are resolved from the device credential; do not send userId 
 
 ## Verification boundary
 
-Build +16 tests pass. Live database valid write, bad/null key denial, throttling, private history, hidden hashes and revocation were checked. The saved Wokwi sketch compiled and started successfully. Browser simulation -> production API -> visible 0% reading passed. ESP32 HTTPS telemetry is waiting for runtime credential entry and is not yet claimed verified.
+Build +16 tests pass. Live database valid write, bad/null key denial, throttling, private history, hidden hashes and revocation were checked. The saved Wokwi sketch compiled and started successfully. Browser simulation -> production API -> visible 0% reading passed. Wokwi ESP32 over verified HTTPS returned HTTP201 for 68% and 20%; Rootory independently showed both values and the low-range label at20%. Runtime credentials are never stored in the public project.
 
 Official references: https://docs.wokwi.com/guides/esp32-wifi and https://docs.wokwi.com/parts/wokwi-potentiometer. Root certificate source: https://pki.goog/repo/certs/gtsr1.pem.
