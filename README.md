@@ -134,8 +134,8 @@ On **mobile**: bottom tab navigation. On **desktop**: left sidebar. Profile and 
 | Deployed HTTPS URL | ✅ `https://rootory-seven.vercel.app/` |
 | Seeded demo + sample content | ✅ Loads without login |
 | Clear README | ✅ This document |
-| Six-slide PPT | 🔲 Pending |
-| Three-minute prototype video | 🔲 Pending |
+| Six-slide PPT | ✅ Completed (`Rootory_Presentation.pptx` in repository root) |
+| Three-minute prototype video | ✅ Completed (Demo walkthrough video recorded) |
 | All links work without personal login | ✅ Verified |
 
 ---
