@@ -11,6 +11,10 @@
 [![Next.js](https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 
+<p>
+  🔑 <b>Judge Demo Account:</b> <code>demo@rootory.example</code> &nbsp;|&nbsp; <b>Password:</b> <code>123456</code>
+</p>
+
 </div>
 
 ---
@@ -47,6 +51,18 @@ Rootory is a **mobile-first, installable PWA** where growers can:
 | 🤝 **Learn & share** | Community board with progress updates, questions, and harvest stories; likes, comments, and saved posts |
 | 📡 **Stay informed** | Gemini-powered symptom assessments with explicit uncertainty; live Open-Meteo weather; geofenced crop-health alerts reviewed by admins |
 | 🛒 **Trade** | Produce and growing-supplies marketplace with private seller enquiries, saved listings, and availability management |
+
+### 🔑 Judge & Evaluator Live Demo Access
+
+> [!TIP]
+> **Instant Live Access (No setup required):**
+> - **Live Deployment:** [https://rootory-seven.vercel.app](https://rootory-seven.vercel.app/)
+> - **Demo Account Email:** `demo@rootory.example`
+> - **Demo Password:** `123456`
+> 
+> *This account is pre-populated with a full cloud-synced garden (**Prithik Fernandes, Goa**), 3 plants, 8 timeline logs with a formatted Gemini AI symptom assessment card, 5 active care reminders, 5 community discussions with comments, 6 marketplace listings, active enquiries, and 9 notifications across Care, Weather, and Community.*
+>
+> *(Alternatively, you can browse without logging in — Rootory will load a full local demo workspace automatically!)*
 
 ---
 
@@ -437,7 +453,13 @@ INSERT INTO public.admin_members (user_id) VALUES ('<admin-user-uuid>');
 
 ### Demo Account
 
-The app loads a fully seeded demo workspace without any login. To test account features, sign up with any email/password at the live URL.
+Rootory provides two ways to evaluate:
+1. **Unauthenticated:** Browse directly at [https://rootory-seven.vercel.app](https://rootory-seven.vercel.app/) without logging in — the app automatically loads a local-first seeded demo workspace.
+2. **Dedicated Cloud Demo Account (Recommended for Judges):**
+   - **Email:** `demo@rootory.example`
+   - **Password:** `123456`
+   - Features pre-hydrated cloud data: 3 plants, 8 timeline logs (including Gemini AI observation), 5 care tasks, 5 community posts with comments, 6 marketplace listings, active enquiries, and 9 notifications.
+3. **Custom Account:** Sign up with any email/password at the live URL to test fresh account onboarding.
 
 ---
 
